@@ -13,6 +13,7 @@ from openai import OpenAIError
 from playwright.sync_api import Error as PlaywrightError
 
 from app.agents.browser_agent import BrowserAgent
+from app.agents.ux_analyzer import UXAnalyzer
 from app.browser.playwright_controller import PlaywrightController, UnsafeNavigationError
 from app.config import PROJECT_ROOT, settings
 from app.models.browser_action import BrowserAction, BrowserActionType
@@ -89,13 +90,31 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def _observation_evidence(observation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "url": observation.get("url", ""),
+        "title": observation.get("title", ""),
+        "visible_text": observation.get("visible_text", "")[:12000],
+        "interactive_elements": [
+            {
+                key: element.get(key)
+                for key in ("tag", "role", "type", "label", "placeholder", "href")
+                if element.get(key) is not None
+            }
+            for element in observation.get("interactive_elements", [])[:100]
+        ],
+    }
+
+
 def run_test_case(
     test_case: TestCase,
     *,
     headless: bool = True,
     agent: BrowserAgent | None = None,
     artifacts_directory: Path | None = None,
+    run_directory: Path | None = None,
     run_id: str | None = None,
+    batch_id: str | None = None,
 ) -> dict[str, Any]:
     is_precreated_run = run_id is not None
     run_id = run_id or (
@@ -104,16 +123,19 @@ def run_test_case(
         + uuid.uuid4().hex[:8]
     )
     root = artifacts_directory or settings.artifacts_dir / test_case.test_case_id
-    run_directory = root / run_id
+    run_directory = run_directory or root / run_id
     run_directory.mkdir(parents=True, exist_ok=is_precreated_run)
     history: list[dict[str, Any]] = []
     started_at = datetime.now(timezone.utc)
+    persona = get_persona(test_case.persona_id)
     result: dict[str, Any] = {
         "run_id": run_id,
+        "batch_id": batch_id,
         "test_case_id": test_case.test_case_id,
         "name": test_case.name,
         "website": str(test_case.website),
         "persona_id": test_case.persona_id,
+        "persona_name": persona.name if persona else test_case.persona_id,
         "goal": test_case.goal,
         "status": "failed",
         "completed": False,
@@ -122,6 +144,7 @@ def run_test_case(
         "finished_at": None,
         "result": None,
         "error": None,
+        "analysis": {"status": "pending"},
         "artifacts": {
             "directory": str(run_directory.relative_to(PROJECT_ROOT))
             if run_directory.is_relative_to(PROJECT_ROOT)
@@ -129,13 +152,15 @@ def run_test_case(
             "screenshots": [],
             "video": None,
             "action_history": "action_history.json",
+            "ux_analysis": "ux_analysis.json",
         },
     }
     result["status"] = "running"
     _write_json(run_directory / "result.json", result)
+    _write_json(run_directory / "ux_analysis.json", {"status": "pending"})
 
+    initial_observation: dict[str, Any] | None = None
     try:
-        persona = get_persona(test_case.persona_id)
         if persona is None:
             raise ValueError(f"Unknown persona id '{test_case.persona_id}'.")
         if agent is None:
@@ -146,12 +171,14 @@ def run_test_case(
             run_directory,
             timeout_ms=settings.browser_timeout,
             headless=headless,
+            viewport=persona.viewport,
         ) as browser:
             browser.open()
             if browser.blocked_navigation:
                 result["status"] = "blocked"
                 result["result"] = browser.blocked_navigation
             observation = browser.observe()
+            initial_observation = _observation_evidence(observation)
             screenshot = browser.save_screenshot(0)
             result["artifacts"]["screenshots"].append(screenshot)
 
@@ -161,6 +188,7 @@ def run_test_case(
                 (step_limit if result["status"] != "blocked" else 0) + 1,
             ):
                 result["step_count"] = step
+                _write_json(run_directory / "result.json", result)
                 obstacle = _obstacle(observation)
                 if obstacle:
                     result["status"] = "blocked"
@@ -186,11 +214,19 @@ def run_test_case(
                         "url": observation["url"],
                         "title": observation["title"],
                     },
+                    "observation_before": _observation_evidence(observation),
                 }
 
                 if action.action == BrowserActionType.FINISH:
                     entry["result"] = "Agent stopped before cart confirmation."
                     history.append(entry)
+                    _write_json(
+                        run_directory / "action_history.json",
+                        {
+                            "initial_observation": initial_observation,
+                            "actions": history,
+                        },
+                    )
                     result["status"] = "incomplete"
                     result["result"] = (
                         "The agent stopped, but the page did not confirm the item in the cart."
@@ -208,6 +244,7 @@ def run_test_case(
                         "url": observation["url"],
                         "title": observation["title"],
                     }
+                    entry["observation_after"] = _observation_evidence(observation)
                     entry["screenshot"] = browser.save_screenshot(step)
                     result["artifacts"]["screenshots"].append(entry["screenshot"])
                 except UnsafeNavigationError as exc:
@@ -216,6 +253,13 @@ def run_test_case(
                     entry["screenshot"] = browser.save_screenshot(step)
                     result["artifacts"]["screenshots"].append(entry["screenshot"])
                     history.append(entry)
+                    _write_json(
+                        run_directory / "action_history.json",
+                        {
+                            "initial_observation": initial_observation,
+                            "actions": history,
+                        },
+                    )
                     result["status"] = "blocked"
                     result["result"] = str(exc)
                     break
@@ -226,9 +270,17 @@ def run_test_case(
                         "url": observation["url"],
                         "title": observation["title"],
                     }
+                    entry["observation_after"] = _observation_evidence(observation)
                     entry["screenshot"] = browser.save_screenshot(step)
                     result["artifacts"]["screenshots"].append(entry["screenshot"])
                 history.append(entry)
+                _write_json(
+                    run_directory / "action_history.json",
+                    {
+                        "initial_observation": initial_observation,
+                        "actions": history,
+                    },
+                )
 
                 if browser.blocked_navigation:
                     result["status"] = "blocked"
@@ -264,10 +316,35 @@ def run_test_case(
         result["duration_seconds"] = round(
             (datetime.now(timezone.utc) - started_at).total_seconds(), 2
         )
-        _write_json(run_directory / "action_history.json", {"actions": history})
+        action_history = {
+            "initial_observation": initial_observation,
+            "actions": history,
+        }
+        _write_json(run_directory / "action_history.json", action_history)
         video_files = sorted((run_directory / "video").glob("*.webm"))
         if video_files:
             result["artifacts"]["video"] = str(video_files[0].relative_to(run_directory))
+        if not settings.azure_ai_configured:
+            analysis_record = {
+                "status": "unavailable",
+                "error": "Azure AI Foundry is not configured; UX analysis was not run.",
+            }
+        else:
+            try:
+                if persona is None:
+                    raise ValueError(f"Unknown persona id '{test_case.persona_id}'.")
+                analysis = UXAnalyzer().analyze(
+                    test_case, persona, result, action_history
+                )
+                analysis_record = analysis.model_dump(mode="json")
+            except Exception as exc:
+                logger.exception("UX analysis failed for run %s", run_id)
+                analysis_record = {
+                    "status": "failed",
+                    "error": str(exc),
+                }
+        result["analysis"] = analysis_record
+        _write_json(run_directory / "ux_analysis.json", analysis_record)
         _write_json(run_directory / "result.json", result)
 
     return result

@@ -89,8 +89,11 @@ From the workspace root, run:
 
 Use `--headed` to watch Chromium. Run `TC-002` for the Amazon iPhone search, or
 `TC-003` for the Thayyil Sports Argentina jacket search. The CLI writes a result,
-action history, screenshots, and a WebM video to a unique
-`artifacts\<test-case-id>\<run-id>\` folder. Each scenario is defined by a separate JSON file
+action history, screenshots, and a WebM video under a unique batch/run ID and
+persona-specific folder: `artifacts\<test-case-id>\<batch-id>\<persona-id>\`.
+The shared batch ID is the parent run ID; each persona's JSON retains its own
+name and individual run ID.
+Each scenario is defined by a separate JSON file
 in `test_cases\`; add a new file named for its test-case id to add another
 scenario. The command needs valid Azure configuration before it will launch
 the browser.
@@ -119,12 +122,24 @@ The backend exposes test case discovery and run management for future clients:
   the property to use the test case's configured persona.
 - `GET /api/test-cases/{id}/runs` lists runs for that case.
 - `GET /api/test-cases/{id}/runs/{run_id}` returns status and evidence URLs.
+- `GET /api/test-cases/{id}/batches` and
+  `GET /api/test-cases/{id}/batches/{batch_id}` list and retrieve grouped
+  multi-persona runs.
 - `GET /api/test-cases/{id}/runs/{run_id}/artifacts/{path}` downloads an
-  individual result, action history, screenshot, or video.
+  individual result, action history, UX analysis, screenshot, or video.
 
 Run artifacts are grouped at
-`artifacts\<test-case-id>\<run-id>\result.json`, with screenshots and video in
-the same run folder. The `result.json` file is the structured run record.
+`artifacts\<test-case-id>\<batch-id>\<persona-id>\`, including `result.json`,
+`action_history.json`, `ux_analysis.json`, screenshots, and that persona's
+video. The JSON metadata keeps the persona ID and individual run ID together.
+The analysis contains persona-specific strengths, recommendations, and
+unassessed areas. Executions also write a manifest to
+`artifacts\<test-case-id>\batches\<batch-id>.json`, linking each persona's
+individual run, analysis, screenshots, and video. The batch ID directory is
+the shared parent; separate persona directories prevent evidence from being
+mixed between personas.
+Every finding must cite recorded evidence; this reduces unsupported claims but
+cannot guarantee perfect correctness or replace real-user research.
 
 ## Tests
 

@@ -30,8 +30,14 @@ def test_controller_captures_screenshot_and_named_video(
         }
     )
 
-    with PlaywrightController(test_case, tmp_path, timeout_ms=10000) as browser:
+    with PlaywrightController(
+        test_case,
+        tmp_path,
+        timeout_ms=10000,
+        viewport={"width": 1280, "height": 960},
+    ) as browser:
         assert browser.page is not None
+        assert browser.page.viewport_size == {"width": 1280, "height": 960}
         browser.page.set_content(
             "<a href='/store/search'><svg></svg></a>"
             "<a href='/store/search'><svg></svg></a>"
