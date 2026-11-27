@@ -173,6 +173,22 @@ def _visible_locator(
             page.get_by_label(target, exact=False),
             page.get_by_placeholder(target, exact=False),
         ]
+        if "search" in normalized_target:
+            candidates.extend(
+                [
+                    page.locator(
+                        'a[href$="/search" i], a[href$="/search/" i]'
+                    ),
+                    page.locator(
+                        'button[aria-label*="search" i], '
+                        '[role="button"][aria-label*="search" i], '
+                        '[title*="search" i]'
+                    ),
+                    page.locator(
+                        'input[type="search"], input[name*="search" i]'
+                    ),
+                ]
+            )
         if "add to cart" in normalized_target:
             candidates.append(page.get_by_text(target, exact=False))
         else:

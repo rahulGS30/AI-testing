@@ -95,11 +95,17 @@ def run_test_case(
     headless: bool = True,
     agent: BrowserAgent | None = None,
     artifacts_directory: Path | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid.uuid4().hex[:8]
-    root = artifacts_directory or settings.artifacts_dir
+    is_precreated_run = run_id is not None
+    run_id = run_id or (
+        datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        + "-"
+        + uuid.uuid4().hex[:8]
+    )
+    root = artifacts_directory or settings.artifacts_dir / test_case.test_case_id
     run_directory = root / run_id
-    run_directory.mkdir(parents=True, exist_ok=False)
+    run_directory.mkdir(parents=True, exist_ok=is_precreated_run)
     history: list[dict[str, Any]] = []
     started_at = datetime.now(timezone.utc)
     result: dict[str, Any] = {
@@ -125,6 +131,8 @@ def run_test_case(
             "action_history": "action_history.json",
         },
     }
+    result["status"] = "running"
+    _write_json(run_directory / "result.json", result)
 
     try:
         persona = get_persona(test_case.persona_id)

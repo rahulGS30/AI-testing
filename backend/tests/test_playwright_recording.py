@@ -33,6 +33,15 @@ def test_controller_captures_screenshot_and_named_video(
     with PlaywrightController(test_case, tmp_path, timeout_ms=10000) as browser:
         assert browser.page is not None
         browser.page.set_content(
+            "<a href='/store/search'><svg></svg></a>"
+            "<a href='/store/search'><svg></svg></a>"
+        )
+        search_link = _visible_locator(
+            browser.page, "Search", BrowserActionType.CLICK
+        )
+        assert search_link.get_attribute("href") == "/store/search"
+
+        browser.page.set_content(
             "<main><h1>Local recording check</h1>"
             "<button type='button'>Search</button>"
             "<input type='search' placeholder='Search'>"

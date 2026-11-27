@@ -92,6 +92,25 @@ Run either scenario from the workspace root:
 .\.venv\Scripts\python.exe backend\run_test.py TC-003
 ```
 
+Run one test case with the three accessibility personas from a single command:
+
+```powershell
+.\.venv\Scripts\python.exe backend\run_test.py TC-003 --persona elderly_user low_vision_user non_native_english_speaker
+```
+
+Select one persona by ID:
+
+```powershell
+.\.venv\Scripts\python.exe backend\run_test.py TC-003 --persona low_vision_user
+```
+
+Use `--all-personas` to run every configured persona, including the default
+first-time user and impatient power user:
+
+```powershell
+.\.venv\Scripts\python.exe backend\run_test.py TC-003 --all-personas
+```
+
 Use `--headed` to watch the browser while it runs:
 
 ```powershell
@@ -99,10 +118,14 @@ Use `--headed` to watch the browser while it runs:
 .\.venv\Scripts\python.exe backend\run_test.py TC-003 --headed
 ```
 
+Add `--headed` to any persona command to show Chromium for each sequential run.
+
 Test cases are independent JSON files in [test_cases/](test_cases/). Add a
 uniquely named JSON file whose `test_case_id` matches its filename to add a
-scenario. Runs are saved under `artifacts/<run-id>/`, with `result.json`,
-`action_history.json`, screenshots, and a `video/journey.webm` recording.
+scenario. Runs are saved under
+`artifacts/<test-case-id>/<run-id>/`, with `result.json`,
+`action_history.json`, screenshots, and a `video/journey.webm` recording,
+grouped by test case.
 The CLI exits with code 0 only when the cart goal is confirmed. Other outcomes
 (blocked, incomplete, step limit, or error) produce a non-zero exit and a
 result file.
@@ -112,6 +135,30 @@ result file.
 - `GET /api/health` — backend status and non-secret configuration readiness
 - `GET /api/health/llm` — sends a small request to verify Azure connectivity
 - `GET /api/personas` — returns the predefined personas
+- `GET /api/test-cases` and `GET /api/test-cases/{id}` — list and retrieve
+  runnable JSON test cases
+- `POST /api/test-cases/{id}/runs` — queue one or more persona runs
+- `GET /api/test-cases/{id}/runs` and
+  `GET /api/test-cases/{id}/runs/{run_id}` — list runs or retrieve a run status
+- `GET /api/test-cases/{id}/runs/{run_id}/artifacts/{path}` — retrieve a
+  run's result, action history, screenshot, or video
+
+Run creation accepts `{"persona_ids":["elderly_user","low_vision_user"]}`.
+Omit `persona_ids` to use the persona configured on the test case. A queued
+response includes each run ID; poll the run endpoint for status and use the
+returned `artifact_urls` when a run has produced evidence.
+
+Each run is stored under its test case:
+
+```text
+artifacts/
+  TC-003/
+    <run-id>/
+      result.json
+      action_history.json
+      screenshots/
+      video/
+```
 
 ## Security and scope
 
