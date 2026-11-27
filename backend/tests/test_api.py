@@ -57,7 +57,7 @@ def test_test_case_api_lists_cases_and_returns_case_details() -> None:
     assert detail.json()["persona_id"] == "first_time_user"
 
 
-def test_run_api_queues_persona_runs_in_case_scoped_directories(
+def test_run_api_queues_persona_runs_under_one_batch_with_persona_directories(
     tmp_path, monkeypatch
 ) -> None:
     from app.api import test_cases
@@ -70,9 +70,11 @@ def test_run_api_queues_persona_runs_in_case_scoped_directories(
     scheduled = []
     monkeypatch.setattr(
         test_cases,
-        "_run_batch",
-        lambda test_case, personas, run_ids, headed: scheduled.append(
-            (test_case.test_case_id, personas, run_ids, headed)
+        "execute_batch",
+        lambda test_case, batch, *, headed, artifacts_root: scheduled.append(
+            (test_case.test_case_id, [run["persona_id"] for run in batch["runs"]], [
+                run["run_id"] for run in batch["runs"]
+            ], headed, artifacts_root)
         ),
     )
 
@@ -87,6 +89,9 @@ def test_run_api_queues_persona_runs_in_case_scoped_directories(
     assert response.status_code == 202
     body = response.json()
     assert body["status"] == "queued"
+    assert body["batch_id"]
+    assert body["run_id"] == body["batch_id"]
+    assert body["batch_url"].endswith(body["batch_id"])
     assert [run["persona_id"] for run in body["runs"]] == [
         "elderly_user",
         "low_vision_user",
@@ -94,20 +99,37 @@ def test_run_api_queues_persona_runs_in_case_scoped_directories(
     assert body["runs"][0]["run_url"].endswith(body["runs"][0]["run_id"])
     assert body["runs"][0]["artifact_urls"]["result"].endswith("/artifacts/result.json")
     assert len(scheduled) == 1
-    case_id, personas, run_ids, headed = scheduled[0]
+    case_id, personas, run_ids, headed, artifacts_root = scheduled[0]
     assert case_id == "TC-003"
     assert personas == ["elderly_user", "low_vision_user"]
     assert headed is True
-    assert response.headers["location"].endswith(f"/runs/{run_ids[0]}")
+    assert artifacts_root == tmp_path
+    assert response.headers["location"].endswith(f"/batches/{body['batch_id']}")
 
     for run in body["runs"]:
-        run_path = tmp_path / "TC-003" / run["run_id"] / "result.json"
+        run_path = (
+            tmp_path
+            / "TC-003"
+            / body["batch_id"]
+            / run["persona_id"]
+            / "result.json"
+        )
         assert run_path.is_file()
-        assert json.loads(run_path.read_text(encoding="utf-8"))["status"] == "queued"
+        queued_result = json.loads(run_path.read_text(encoding="utf-8"))
+        assert queued_result["status"] == "queued"
+        assert queued_result["persona_id"] == run["persona_id"]
+        assert queued_result["persona_name"] == run["persona_name"]
+        assert queued_result["batch_id"] == body["batch_id"]
+        assert queued_result["artifacts"]["directory"].endswith(
+            f"{body['batch_id']}\\{run['persona_id']}"
+        )
 
     listed_runs = client.get("/api/test-cases/TC-003/runs")
     assert listed_runs.status_code == 200
     assert {run["run_id"] for run in listed_runs.json()} == set(run_ids)
+    batch_record = client.get(body["batch_url"])
+    assert batch_record.status_code == 200
+    assert batch_record.json()["batch_id"] == body["batch_id"]
 
 
 def test_run_api_exposes_structured_result_and_artifacts(
@@ -120,12 +142,21 @@ def test_run_api_exposes_structured_result_and_artifacts(
         "settings",
         SimpleNamespace(azure_ai_configured=True, artifacts_dir=tmp_path),
     )
-    monkeypatch.setattr(test_cases, "_run_batch", lambda *args: None)
+    monkeypatch.setattr(
+        test_cases,
+        "execute_batch",
+        lambda test_case, batch, *, headed, artifacts_root: None,
+    )
     queued = client.post(
         "/api/test-cases/TC-003/runs",
         json={"persona_ids": ["low_vision_user"]},
     ).json()["runs"][0]
-    run_directory = tmp_path / "TC-003" / queued["run_id"]
+    run_directory = (
+        tmp_path
+        / "TC-003"
+        / queued["batch_id"]
+        / queued["persona_id"]
+    )
     (run_directory / "screenshots").mkdir()
     (run_directory / "screenshots" / "step_000.png").write_bytes(b"image")
     (run_directory / "video").mkdir()
@@ -156,6 +187,9 @@ def test_run_api_exposes_structured_result_and_artifacts(
     assert body["artifact_urls"]["screenshots"] == [
         f"/api/test-cases/TC-003/runs/{queued['run_id']}/artifacts/screenshots/step_000.png"
     ]
+    assert body["artifact_urls"]["ux_analysis"].endswith(
+        "/artifacts/ux_analysis.json"
+    )
 
     image = client.get(body["artifact_urls"]["screenshots"][0])
     assert image.status_code == 200
@@ -163,6 +197,10 @@ def test_run_api_exposes_structured_result_and_artifacts(
     video = client.get(body["artifact_urls"]["video"])
     assert video.status_code == 200
     assert video.content == b"video"
+
+    listed_runs = client.get("/api/test-cases/TC-003/runs")
+    assert listed_runs.status_code == 200
+    assert any(run["run_id"] == queued["run_id"] for run in listed_runs.json())
 
 
 def test_run_api_validates_case_and_persona(monkeypatch) -> None:
@@ -197,3 +235,43 @@ def test_run_api_requires_azure_configuration(monkeypatch) -> None:
     )
 
     assert response.status_code == 503
+
+
+def test_run_api_lists_and_serves_legacy_artifact_directories(
+    tmp_path, monkeypatch
+) -> None:
+    from app.api import test_cases
+
+    monkeypatch.setattr(
+        test_cases,
+        "settings",
+        SimpleNamespace(artifacts_dir=tmp_path),
+    )
+    run_id = "20261127T175603Z-db2477f0"
+    run_directory = tmp_path / run_id
+    (run_directory / "screenshots").mkdir(parents=True)
+    (run_directory / "screenshots" / "step_000.png").write_bytes(b"legacy-image")
+    (run_directory / "result.json").write_text(
+        json.dumps(
+            {
+                "run_id": run_id,
+                "test_case_id": "TC-003",
+                "persona_id": "elderly_user",
+                "status": "completed",
+                "artifacts": {
+                    "screenshots": ["screenshots\\step_000.png"],
+                    "video": None,
+                    "action_history": "action_history.json",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    listed = client.get("/api/test-cases/TC-003/runs")
+    assert listed.status_code == 200
+    legacy_run = next(run for run in listed.json() if run["run_id"] == run_id)
+    image_url = legacy_run["artifact_urls"]["screenshots"][0]
+    image = client.get(image_url)
+    assert image.status_code == 200
+    assert image.content == b"legacy-image"
