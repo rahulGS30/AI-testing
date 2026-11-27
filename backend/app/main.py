@@ -20,3 +20,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(personas.router)
 app.include_router(test_cases.router)
+app.include_router(test_cases.runs_router)

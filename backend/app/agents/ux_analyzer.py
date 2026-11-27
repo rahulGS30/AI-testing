@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.config import settings
 from app.llm.azure_client import create_client, uses_responses_api
+from app.llm.token_usage import TokenUsageTracker
 from app.llm.ux_analysis_prompt import UX_ANALYSIS_PROMPT
 from app.models.persona import Persona
 from app.models.ux_analysis import UXAnalysis
@@ -16,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class UXAnalyzer:
-    def __init__(self) -> None:
+    def __init__(self, token_usage: TokenUsageTracker | None = None) -> None:
         self.client, self.extra_query = create_client()
+        self.token_usage = token_usage
 
     def analyze(
         self,
@@ -43,48 +45,103 @@ class UXAnalyzer:
             "Analyze this executed persona UX test and return a JSON object matching "
             f"the required evidence-citation schema.\n{user_input}"
         )
-        try:
-            if uses_responses_api():
-                response = self.client.responses.create(
-                    model=settings.azure_ai_model_deployment,
-                    instructions=UX_ANALYSIS_PROMPT,
-                    input=user_input,
-                    text={"format": {"type": "json_object"}},
-                    max_output_tokens=2500,
-                    **request_options,
+        for attempt in range(2):
+            try:
+                content = self._request_content(user_input, request_options)
+                if not content:
+                    raise ValueError("The UX analysis response was empty.")
+                analysis = UXAnalysis.model_validate_json(content)
+                self._validate_evidence(analysis, action_history, run_result)
+                return analysis
+            except OpenAIError as exc:
+                status = getattr(exc, "status_code", None)
+                logger.warning(
+                    "UX analysis request failed (exception=%s, status=%s)",
+                    type(exc).__name__,
+                    status,
                 )
-                content = response.output_text
-            else:
-                response = self.client.chat.completions.create(
-                    model=settings.azure_ai_model_deployment,
-                    messages=[
-                        {"role": "system", "content": UX_ANALYSIS_PROMPT},
-                        {"role": "user", "content": user_input},
-                    ],
-                    response_format={"type": "json_object"},
-                    max_tokens=2500,
-                    **request_options,
+                status_detail = f"HTTP {status}" if status else type(exc).__name__
+                raise RuntimeError(
+                    f"UX analysis request failed ({status_detail})."
+                ) from exc
+            except (ValidationError, ValueError, IndexError) as exc:
+                reason = self._rejection_reason(exc)
+                if attempt == 0:
+                    logger.info(
+                        "UX analysis output rejected; retrying once (reason=%s)",
+                        reason,
+                    )
+                    user_input = (
+                        f"{user_input}\n\nThe previous response was rejected: {reason}\n"
+                        "Return a corrected JSON object matching the exact schema. "
+                        "Use only exact quotes from the supplied recorded evidence. "
+                        "If a finding cannot be supported by an exact citation, remove "
+                        "that finding and list the uncertainty in not_assessed."
+                    )
+                    continue
+
+                logger.warning(
+                    "UX analysis output rejected after retry (reason=%s)",
+                    reason,
                 )
-                content = response.choices[0].message.content
-            if not content:
-                raise ValueError("The UX analysis response was empty.")
-            analysis = UXAnalysis.model_validate_json(content)
-            self._validate_evidence(analysis, action_history, run_result)
-            return analysis
-        except OpenAIError as exc:
-            status = getattr(exc, "status_code", None)
-            logger.warning(
-                "UX analysis request failed (exception=%s, status=%s)",
-                type(exc).__name__,
-                status,
+                if any(
+                    marker in reason.casefold()
+                    for marker in ("citation", "quote", "evidence", "observation")
+                ):
+                    message = (
+                        "The UX analysis response did not cite recorded evidence "
+                        "correctly after one retry."
+                    )
+                else:
+                    message = (
+                        "The UX analysis response remained invalid after one retry."
+                    )
+                raise RuntimeError(message) from exc
+
+        raise RuntimeError("UX analysis did not produce a valid report.")
+
+    def _request_content(
+        self,
+        user_input: str,
+        request_options: dict[str, Any],
+    ) -> str | None:
+        if uses_responses_api():
+            response = self.client.responses.create(
+                model=settings.azure_ai_model_deployment,
+                instructions=UX_ANALYSIS_PROMPT,
+                input=user_input,
+                text={"format": {"type": "json_object"}},
+                max_output_tokens=2500,
+                **request_options,
             )
-            status_detail = f"HTTP {status}" if status else type(exc).__name__
-            raise RuntimeError(f"UX analysis request failed ({status_detail}).") from exc
-        except (ValidationError, ValueError, IndexError) as exc:
-            logger.warning("UX analysis output rejected (%s)", type(exc).__name__)
-            raise RuntimeError(
-                "The UX analysis response was invalid or did not cite recorded evidence."
-            ) from exc
+            if self.token_usage is not None:
+                self.token_usage.record_response("ux_analysis", response)
+            return response.output_text
+
+        response = self.client.chat.completions.create(
+            model=settings.azure_ai_model_deployment,
+            messages=[
+                {"role": "system", "content": UX_ANALYSIS_PROMPT},
+                {"role": "user", "content": user_input},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=2500,
+            **request_options,
+        )
+        if self.token_usage is not None:
+            self.token_usage.record_response("ux_analysis", response)
+        return response.choices[0].message.content
+
+    @staticmethod
+    def _rejection_reason(exc: Exception) -> str:
+        if isinstance(exc, ValidationError):
+            issues = exc.errors(include_input=False)
+            return "; ".join(
+                f"{'.'.join(str(part) for part in issue.get('loc', ())) or 'response'}:"
+                f" {issue.get('type', 'invalid')}"
+                for issue in issues[:5]
+            )
+        return str(exc) or type(exc).__name__
 
     @staticmethod
     def _validate_evidence(

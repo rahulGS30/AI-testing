@@ -16,9 +16,11 @@ from app.agents.browser_agent import BrowserAgent
 from app.agents.ux_analyzer import UXAnalyzer
 from app.browser.playwright_controller import PlaywrightController, UnsafeNavigationError
 from app.config import PROJECT_ROOT, settings
+from app.llm.token_usage import TokenUsageTracker
 from app.models.browser_action import BrowserAction, BrowserActionType
 from app.models.test_case import TestCase
 from app.personas.persona_manager import get_persona
+from app.storage.gcs_artifacts import upload_run_artifacts
 
 logger = logging.getLogger(__name__)
 CASES_DIRECTORY = PROJECT_ROOT / "test_cases"
@@ -31,6 +33,8 @@ def _normalized_text(value: str) -> str:
 def _is_cart_confirmed(
     observation: dict[str, Any], test_case: TestCase
 ) -> bool:
+    if test_case.completion_mode != "cart_confirmation":
+        return False
     text = _normalized_text(observation.get("visible_text", ""))
     title = _normalized_text(observation.get("title", ""))
     url = observation.get("url", "").casefold()
@@ -125,6 +129,7 @@ def run_test_case(
     root = artifacts_directory or settings.artifacts_dir / test_case.test_case_id
     run_directory = run_directory or root / run_id
     run_directory.mkdir(parents=True, exist_ok=is_precreated_run)
+    token_usage = TokenUsageTracker(run_directory, run_id)
     history: list[dict[str, Any]] = []
     started_at = datetime.now(timezone.utc)
     persona = get_persona(test_case.persona_id)
@@ -153,6 +158,7 @@ def run_test_case(
             "video": None,
             "action_history": "action_history.json",
             "ux_analysis": "ux_analysis.json",
+            "token_usage": "token_usage.json",
         },
     }
     result["status"] = "running"
@@ -164,7 +170,7 @@ def run_test_case(
         if persona is None:
             raise ValueError(f"Unknown persona id '{test_case.persona_id}'.")
         if agent is None:
-            agent = BrowserAgent()
+            agent = BrowserAgent(token_usage=token_usage)
 
         with PlaywrightController(
             test_case,
@@ -218,7 +224,20 @@ def run_test_case(
                 }
 
                 if action.action == BrowserActionType.FINISH:
-                    entry["result"] = "Agent stopped before cart confirmation."
+                    if test_case.completion_mode == "agent_reported":
+                        entry["result"] = (
+                            "Agent reported the requested task complete; "
+                            "completion was not independently verified."
+                        )
+                        result["status"] = "completed"
+                        result["completed"] = True
+                        result["result"] = entry["result"]
+                    else:
+                        entry["result"] = "Agent stopped before cart confirmation."
+                        result["status"] = "incomplete"
+                        result["result"] = (
+                            "The agent stopped, but the page did not confirm the item in the cart."
+                        )
                     history.append(entry)
                     _write_json(
                         run_directory / "action_history.json",
@@ -226,10 +245,6 @@ def run_test_case(
                             "initial_observation": initial_observation,
                             "actions": history,
                         },
-                    )
-                    result["status"] = "incomplete"
-                    result["result"] = (
-                        "The agent stopped, but the page did not confirm the item in the cart."
                     )
                     break
 
@@ -333,7 +348,7 @@ def run_test_case(
             try:
                 if persona is None:
                     raise ValueError(f"Unknown persona id '{test_case.persona_id}'.")
-                analysis = UXAnalyzer().analyze(
+                analysis = UXAnalyzer(token_usage=token_usage).analyze(
                     test_case, persona, result, action_history
                 )
                 analysis_record = analysis.model_dump(mode="json")
@@ -344,7 +359,8 @@ def run_test_case(
                     "error": str(exc),
                 }
         result["analysis"] = analysis_record
+        result["token_usage"] = token_usage.summary()["totals"]
         _write_json(run_directory / "ux_analysis.json", analysis_record)
-        _write_json(run_directory / "result.json", result)
+        upload_run_artifacts(run_directory, result)
 
     return result

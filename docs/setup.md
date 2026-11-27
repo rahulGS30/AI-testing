@@ -56,6 +56,21 @@ Keep `.env` private. Check connectivity at
 `http://127.0.0.1:8000/api/health/llm`. The check makes a small request using
 the configured deployment's supported API endpoint.
 
+## Google Cloud Storage artifact uploads
+
+Each persona run uploads its result JSON, UX analysis, action history, token
+usage, screenshots, and video to the `autotest-screenshot` bucket. Objects are
+organized by test case, batch, and persona. Authenticate the machine running the
+backend with Application Default Credentials:
+
+```powershell
+gcloud auth application-default login
+```
+
+The authenticated account needs permission to create objects in the bucket. A
+cloud upload error is recorded in the local `result.json`; it does not change
+the browser run's outcome or remove its local artifacts.
+
 Alternatively, create the ignored root file `settings.local.json`:
 
 ```json

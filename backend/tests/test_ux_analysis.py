@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.agents import ux_analyzer
 from app.agents.ux_analyzer import UXAnalyzer
 from app.config import PROJECT_ROOT
+from app.llm.token_usage import TokenUsageTracker
 from app.models.browser_action import BrowserAction
 from app.models.test_case import load_test_case
 from app.personas.persona_manager import get_persona
@@ -148,7 +149,7 @@ def test_legacy_action_records_can_support_action_citations() -> None:
 
 
 def test_analyzer_requests_persona_review_and_accepts_grounded_findings(
-    monkeypatch,
+    monkeypatch, tmp_path,
 ) -> None:
     calls = []
 
@@ -158,7 +159,77 @@ def test_analyzer_requests_persona_review_and_accepts_grounded_findings(
             return type(
                 "Response",
                 (),
-                {"output_text": _analysis("23 results found").model_dump_json()},
+                {
+                    "output_text": _analysis("23 results found").model_dump_json(),
+                    "usage": type(
+                        "Usage",
+                        (),
+                        {"input_tokens": 120, "output_tokens": 25, "total_tokens": 145},
+                    )(),
+                },
+            )()
+
+    class FakeClient:
+        responses = FakeResponses()
+
+    monkeypatch.setattr(ux_analyzer, "create_client", lambda: (FakeClient(), None))
+    monkeypatch.setattr(ux_analyzer, "uses_responses_api", lambda: True)
+    monkeypatch.setattr(
+        ux_analyzer,
+        "settings",
+        type("Settings", (), {"azure_ai_model_deployment": "test-deployment"})(),
+    )
+    test_case = load_test_case(PROJECT_ROOT / "test_cases", "TC-003")
+    persona = get_persona("low_vision_user")
+    assert persona is not None
+    history = {
+        "initial_observation": {
+            "visible_text": "Home page",
+            "interactive_elements": [],
+        },
+        "actions": [
+            {
+                "step": 2,
+                "observation_after": {
+                    "visible_text": 'Search: 23 results found for "jacket argentina"',
+                    "interactive_elements": [],
+                },
+            }
+        ],
+    }
+
+    token_usage = TokenUsageTracker(tmp_path, "analysis-run")
+    result = UXAnalyzer(token_usage=token_usage).analyze(
+        test_case,
+        persona,
+        {"status": "blocked", "result": "Verification"},
+        history,
+    )
+
+    assert result.status == "completed"
+    assert result.strengths[0].evidence[0].quote == "23 results found"
+    assert calls[0]["model"] == "test-deployment"
+    assert "low_vision_user" in calls[0]["input"]
+    assert "JSON object" in calls[0]["input"]
+    assert "Do not infer contrast" in calls[0]["instructions"]
+    assert "Some older runs contain only action records" in calls[0]["instructions"]
+    assert token_usage.summary()["totals"]["total_tokens"] == 145
+
+
+def test_analyzer_retries_once_with_validation_feedback(monkeypatch) -> None:
+    calls = []
+    outputs = [
+        _analysis("This quote was not recorded").model_dump_json(),
+        _analysis("23 results found").model_dump_json(),
+    ]
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            calls.append(kwargs)
+            return type(
+                "Response",
+                (),
+                {"output_text": outputs.pop(0)},
             )()
 
     class FakeClient:
@@ -198,12 +269,9 @@ def test_analyzer_requests_persona_review_and_accepts_grounded_findings(
     )
 
     assert result.status == "completed"
+    assert len(calls) == 2
+    assert "previous response was rejected" in calls[1]["input"]
     assert result.strengths[0].evidence[0].quote == "23 results found"
-    assert calls[0]["model"] == "test-deployment"
-    assert "low_vision_user" in calls[0]["input"]
-    assert "JSON object" in calls[0]["input"]
-    assert "Do not infer contrast" in calls[0]["instructions"]
-    assert "Some older runs contain only action records" in calls[0]["instructions"]
 
 
 def test_analysis_findings_require_evidence() -> None:
@@ -297,6 +365,9 @@ def test_run_persists_persona_analysis_with_evidence(
     analyzer_calls = []
 
     class FakeAnalyzer:
+        def __init__(self, token_usage=None):
+            self.token_usage = token_usage
+
         def analyze(self, test_case, persona, run_result, action_history):
             analyzer_calls.append((persona.persona_id, action_history))
             return analysis
@@ -317,6 +388,13 @@ def test_run_persists_persona_analysis_with_evidence(
     )
     monkeypatch.setattr(test_runner, "PlaywrightController", FakeController)
     monkeypatch.setattr(test_runner, "UXAnalyzer", FakeAnalyzer)
+    monkeypatch.setattr(
+        test_runner,
+        "upload_run_artifacts",
+        lambda run_directory, result: test_runner._write_json(
+            run_directory / "result.json", result
+        ),
+    )
 
     result = test_runner.run_test_case(
         case,
@@ -339,3 +417,5 @@ def test_run_persists_persona_analysis_with_evidence(
     assert '"quote": "Search"' in persisted_analysis
     assert '"initial_observation"' in persisted_history
     assert analyzer_calls[0][0] == case.persona_id
+    assert (run_directory / "token_usage.json").is_file()
+    assert result["token_usage"]["call_count"] == 0

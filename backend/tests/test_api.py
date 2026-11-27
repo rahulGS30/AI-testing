@@ -132,6 +132,70 @@ def test_run_api_queues_persona_runs_under_one_batch_with_persona_directories(
     assert batch_record.json()["batch_id"] == body["batch_id"]
 
 
+def test_custom_run_api_persists_case_and_lists_run(tmp_path, monkeypatch) -> None:
+    from app.api import test_cases
+
+    monkeypatch.setattr(
+        test_cases,
+        "settings",
+        SimpleNamespace(azure_ai_configured=True, artifacts_dir=tmp_path),
+    )
+    monkeypatch.setattr(
+        test_cases,
+        "execute_batch",
+        lambda test_case, batch, *, headed, artifacts_root: None,
+    )
+
+    response = client.post(
+        "/api/runs/custom",
+        json={
+            "website": "https://example.com/",
+            "task": "Find the help page.",
+            "persona_ids": ["first_time_user"],
+        },
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    custom_case_id = body["test_case_id"]
+    assert custom_case_id.startswith("WEB-")
+    assert (tmp_path / "custom_test_cases" / f"{custom_case_id}.json").is_file()
+    assert body["runs"][0]["goal"] == "Find the help page."
+    listed_runs = client.get("/api/runs")
+    assert listed_runs.status_code == 200
+    assert any(run["run_id"] == body["runs"][0]["run_id"] for run in listed_runs.json())
+
+
+def test_custom_run_api_rejects_non_https_website() -> None:
+    response = client.post(
+        "/api/runs/custom",
+        json={
+            "website": "http://example.com/",
+            "task": "Find the help page.",
+            "persona_ids": ["first_time_user"],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_all_runs_endpoint_handles_missing_artifacts_directory(
+    tmp_path, monkeypatch
+) -> None:
+    from app.api import test_cases
+
+    monkeypatch.setattr(
+        test_cases,
+        "settings",
+        SimpleNamespace(artifacts_dir=tmp_path / "not-created"),
+    )
+
+    response = client.get("/api/runs")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 def test_run_api_exposes_structured_result_and_artifacts(
     tmp_path, monkeypatch
 ) -> None:
@@ -161,6 +225,10 @@ def test_run_api_exposes_structured_result_and_artifacts(
     (run_directory / "screenshots" / "step_000.png").write_bytes(b"image")
     (run_directory / "video").mkdir()
     (run_directory / "video" / "journey.webm").write_bytes(b"video")
+    (run_directory / "token_usage.json").write_text(
+        json.dumps({"totals": {"total_tokens": 40}}),
+        encoding="utf-8",
+    )
     result = {
         **queued,
         "status": "completed",
@@ -169,6 +237,7 @@ def test_run_api_exposes_structured_result_and_artifacts(
             **queued["artifacts"],
             "screenshots": ["screenshots/step_000.png"],
             "video": "video/journey.webm",
+            "token_usage": "token_usage.json",
         },
     }
     (run_directory / "result.json").write_text(
@@ -197,19 +266,22 @@ def test_run_api_exposes_structured_result_and_artifacts(
     video = client.get(body["artifact_urls"]["video"])
     assert video.status_code == 200
     assert video.content == b"video"
+    token_usage = client.get(body["artifact_urls"]["token_usage"])
+    assert token_usage.status_code == 200
+    assert token_usage.json()["totals"]["total_tokens"] == 40
 
     listed_runs = client.get("/api/test-cases/TC-003/runs")
     assert listed_runs.status_code == 200
     assert any(run["run_id"] == queued["run_id"] for run in listed_runs.json())
 
 
-def test_run_api_validates_case_and_persona(monkeypatch) -> None:
+def test_run_api_validates_case_and_persona(monkeypatch, tmp_path) -> None:
     from app.api import test_cases
 
     monkeypatch.setattr(
         test_cases,
         "settings",
-        SimpleNamespace(azure_ai_configured=True),
+        SimpleNamespace(azure_ai_configured=True, artifacts_dir=tmp_path),
     )
     missing_case = client.get("/api/test-cases/TC-404")
     assert missing_case.status_code == 404
