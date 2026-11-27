@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, personas
+from app.api import health, personas, test_cases
 
 app = FastAPI(
     title="AI Persona UX Testing Agent",
@@ -19,3 +19,4 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(personas.router)
+app.include_router(test_cases.router)

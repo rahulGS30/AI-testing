@@ -90,13 +90,41 @@ From the workspace root, run:
 Use `--headed` to watch Chromium. Run `TC-002` for the Amazon iPhone search, or
 `TC-003` for the Thayyil Sports Argentina jacket search. The CLI writes a result,
 action history, screenshots, and a WebM video to a unique
-`artifacts\<run-id>\` folder. Each scenario is defined by a separate JSON file
+`artifacts\<test-case-id>\<run-id>\` folder. Each scenario is defined by a separate JSON file
 in `test_cases\`; add a new file named for its test-case id to add another
 scenario. The command needs valid Azure configuration before it will launch
 the browser.
 
+Run the three accessibility personas in sequence for one test case, or select
+just one persona:
+
+```powershell
+.\.venv\Scripts\python.exe backend\run_test.py TC-003 --persona elderly_user low_vision_user non_native_english_speaker
+.\.venv\Scripts\python.exe backend\run_test.py TC-003 --persona low_vision_user
+```
+
+Use `--all-personas` to include every configured persona. Add `--headed` to
+show Chromium during each run. Each persona run creates its own artifact folder.
+
 If a site requires sign-in or shows CAPTCHA/bot checks, the test stops and
 records the obstacle; it does not bypass site controls or proceed to checkout.
+
+## Backend API for test cases and runs
+
+The backend exposes test case discovery and run management for future clients:
+
+- `GET /api/test-cases` and `GET /api/test-cases/{id}` list and retrieve cases.
+- `POST /api/test-cases/{id}/runs` starts background run(s). Send
+  `{"persona_ids":["elderly_user","low_vision_user"]}` to select personas; omit
+  the property to use the test case's configured persona.
+- `GET /api/test-cases/{id}/runs` lists runs for that case.
+- `GET /api/test-cases/{id}/runs/{run_id}` returns status and evidence URLs.
+- `GET /api/test-cases/{id}/runs/{run_id}/artifacts/{path}` downloads an
+  individual result, action history, screenshot, or video.
+
+Run artifacts are grouped at
+`artifacts\<test-case-id>\<run-id>\result.json`, with screenshots and video in
+the same run folder. The `result.json` file is the structured run record.
 
 ## Tests
 
