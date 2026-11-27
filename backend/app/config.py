@@ -53,6 +53,7 @@ class Settings:
     backend_port: int
     max_agent_steps: int
     browser_timeout: int
+    max_retries: int
     artifacts_dir: Path
 
     @classmethod
@@ -81,6 +82,7 @@ class Settings:
             backend_port=int(os.getenv("BACKEND_PORT", "8000")),
             max_agent_steps=int(os.getenv("MAX_AGENT_STEPS", "20")),
             browser_timeout=int(os.getenv("BROWSER_TIMEOUT", "30000")),
+            max_retries=min(3, max(0, int(os.getenv("MAX_RETRIES", "3")))),
             artifacts_dir=Path(
                 os.getenv("ARTIFACTS_DIR", str(PROJECT_ROOT / "artifacts"))
             ),

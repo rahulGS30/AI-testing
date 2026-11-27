@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class BrowserActionType(StrEnum):
@@ -24,6 +24,13 @@ class BrowserAction(BaseModel):
     reason: str
     expected_result: str
     confidence: float = Field(ge=0, le=1)
+
+    @field_validator("target", "value", "reason", "expected_result")
+    @classmethod
+    def bound_string_fields(cls, value):
+        if value is not None and len(value) > 2000:
+            raise ValueError("Browser action fields must not exceed 2000 characters.")
+        return value
 
     @model_validator(mode="after")
     def validate_action_fields(self) -> "BrowserAction":

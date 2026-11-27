@@ -1,0 +1,1425 @@
+{
+  "run_id": "20261127T211500Z-71d10632",
+  "attempts": [
+    {
+      "attempt_number": 1,
+      "started_at": "2026-11-27T21:15:00.694446+00:00",
+      "finished_at": "2026-11-27T21:15:00.695442+00:00",
+      "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+      "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+      "persona": {
+        "persona_id": "first_time_user",
+        "name": "First-Time User",
+        "description": "A new visitor who explores before acting and needs clear labels.",
+        "experience_level": "beginner",
+        "technical_familiarity": "low",
+        "patience_level": "moderate",
+        "reading_preference": "plain language, concise instructions",
+        "navigation_behaviour": "explores obvious navigation before using search",
+        "accessibility_requirements": [],
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "interaction_preferences": [
+          "descriptive controls",
+          "clear feedback"
+        ],
+        "task_completion_expectations": [
+          "find the requested product",
+          "add it to cart"
+        ]
+      },
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "test_case_id": "TC-003",
+      "application_context": {
+        "application_id": "TC-003",
+        "website": "https://www.thayyilsports.in/",
+        "allowed_domain": "thayyilsports.in"
+      },
+      "page_context": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "observed_state": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "actions": [
+        {
+          "action": "finish",
+          "target": null,
+          "value": null,
+          "reason": "Evidence collection test.",
+          "expected_result": "The run stops.",
+          "confidence": 1.0
+        }
+      ],
+      "action_history": [
+        {
+          "attempt_number": 1,
+          "step": 1,
+          "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+          "timestamp": "2026-11-27T21:15:00.694446+00:00",
+          "decision": {
+            "action": "finish",
+            "target": null,
+            "value": null,
+            "reason": "Evidence collection test.",
+            "expected_result": "The run stops.",
+            "confidence": 1.0
+          },
+          "decision_duration_ms": 0,
+          "before": {
+            "url": "https://www.thayyilsports.in/",
+            "title": "Store"
+          },
+          "observation_before": {
+            "url": "https://www.thayyilsports.in/",
+            "title": "Store",
+            "visible_text": "Search",
+            "interactive_elements": [
+              {
+                "tag": "button",
+                "label": "Search"
+              }
+            ]
+          },
+          "result": "Agent stopped before objective confirmation."
+        }
+      ],
+      "execution_result": {
+        "status": "incomplete",
+        "expected": [
+          "Open the Thayyil Sports storefront.",
+          "Use the visible site search control to search for the exact query \"jacket argentina\".",
+          "Choose the first relevant item in the search results.",
+          "Add only that first item to the cart.",
+          "Stop immediately when the site confirms the item is in the cart."
+        ],
+        "actual": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "objective_verified": false,
+        "failure_reason": "The agent stopped before the journey objective was verified."
+      },
+      "objective_verified": false,
+      "evidence": {
+        "current_url": "https://www.thayyilsports.in/",
+        "current_title": "Store",
+        "error": "",
+        "failure_reason": "The agent stopped before the journey objective was verified.",
+        "action_error": false,
+        "unsafe_action": false,
+        "journey_incomplete": true,
+        "network_events": [],
+        "network_errors": [],
+        "console_errors": [],
+        "page_errors": [],
+        "website_hostname": "thayyilsports.in"
+      },
+      "evidence_references": [
+        "action_history.json"
+      ],
+      "previous_failure_analysis": "Initial execution attempt.",
+      "failure_category": "AGENT_RELATED",
+      "root_cause": "The agent stopped before the journey objective was verified.",
+      "learning_eligible": true,
+      "outcome": "FAILURE",
+      "confidence": 0.65,
+      "validation_status": "VALIDATED",
+      "retrieved_experience_ids": [
+        "f32cf060-ba40-5b53-902f-394c270a85de",
+        "b2c58016-8135-52eb-bc06-17d58b570181",
+        "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+        "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+      ],
+      "llm_proposal": null,
+      "timestamp": "2026-11-27T21:15:00.695442+00:00",
+      "reward": 0.0
+    }
+  ],
+  "retry_decisions": [
+    {
+      "attempt_number": 2,
+      "retrieved_experience_ids": [
+        "f32cf060-ba40-5b53-902f-394c270a85de",
+        "b2c58016-8135-52eb-bc06-17d58b570181",
+        "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+        "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+      ],
+      "context": {
+        "persona": {
+          "persona_id": "first_time_user",
+          "name": "First-Time User",
+          "description": "A new visitor who explores before acting and needs clear labels.",
+          "experience_level": "beginner",
+          "technical_familiarity": "low",
+          "patience_level": "moderate",
+          "reading_preference": "plain language, concise instructions",
+          "navigation_behaviour": "explores obvious navigation before using search",
+          "accessibility_requirements": [],
+          "viewport": {
+            "width": 1365,
+            "height": 900
+          },
+          "interaction_preferences": [
+            "descriptive controls",
+            "clear feedback"
+          ],
+          "task_completion_expectations": [
+            "find the requested product",
+            "add it to cart"
+          ]
+        },
+        "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+        "run_id": "20261127T211500Z-71d10632",
+        "attempt_number": 2,
+        "maximum_attempts": 4,
+        "attempt_history": [
+          {
+            "attempt_number": 1,
+            "started_at": "2026-11-27T21:15:00.694446+00:00",
+            "finished_at": "2026-11-27T21:15:00.695442+00:00",
+            "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+            "persona": {
+              "persona_id": "first_time_user",
+              "name": "First-Time User",
+              "description": "A new visitor who explores before acting and needs clear labels.",
+              "experience_level": "beginner",
+              "technical_familiarity": "low",
+              "patience_level": "moderate",
+              "reading_preference": "plain language, concise instructions",
+              "navigation_behaviour": "explores obvious navigation before using search",
+              "accessibility_requirements": [],
+              "viewport": {
+                "width": 1365,
+                "height": 900
+              },
+              "interaction_preferences": [
+                "descriptive controls",
+                "clear feedback"
+              ],
+              "task_completion_expectations": [
+                "find the requested product",
+                "add it to cart"
+              ]
+            },
+            "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+            "test_case_id": "TC-003",
+            "application_context": {
+              "application_id": "TC-003",
+              "website": "https://www.thayyilsports.in/",
+              "allowed_domain": "thayyilsports.in"
+            },
+            "page_context": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "observed_state": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "actions": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "action_history": [
+              {
+                "attempt_number": 1,
+                "step": 1,
+                "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+                "timestamp": "2026-11-27T21:15:00.694446+00:00",
+                "decision": {
+                  "action": "finish",
+                  "target": null,
+                  "value": null,
+                  "reason": "Evidence collection test.",
+                  "expected_result": "The run stops.",
+                  "confidence": 1.0
+                },
+                "decision_duration_ms": 0,
+                "before": {
+                  "url": "https://www.thayyilsports.in/",
+                  "title": "Store"
+                },
+                "observation_before": {
+                  "url": "https://www.thayyilsports.in/",
+                  "title": "Store",
+                  "visible_text": "Search",
+                  "interactive_elements": [
+                    {
+                      "tag": "button",
+                      "label": "Search"
+                    }
+                  ]
+                },
+                "result": "Agent stopped before objective confirmation."
+              }
+            ],
+            "execution_result": {
+              "status": "incomplete",
+              "expected": [
+                "Open the Thayyil Sports storefront.",
+                "Use the visible site search control to search for the exact query \"jacket argentina\".",
+                "Choose the first relevant item in the search results.",
+                "Add only that first item to the cart.",
+                "Stop immediately when the site confirms the item is in the cart."
+              ],
+              "actual": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "objective_verified": false,
+              "failure_reason": "The agent stopped before the journey objective was verified."
+            },
+            "objective_verified": false,
+            "evidence": {
+              "current_url": "https://www.thayyilsports.in/",
+              "current_title": "Store",
+              "error": "",
+              "failure_reason": "The agent stopped before the journey objective was verified.",
+              "action_error": false,
+              "unsafe_action": false,
+              "journey_incomplete": true,
+              "network_events": [],
+              "network_errors": [],
+              "console_errors": [],
+              "page_errors": [],
+              "website_hostname": "thayyilsports.in"
+            },
+            "evidence_references": [
+              "action_history.json"
+            ],
+            "previous_failure_analysis": "Initial execution attempt.",
+            "failure_category": "AGENT_RELATED",
+            "root_cause": "The agent stopped before the journey objective was verified.",
+            "learning_eligible": true,
+            "outcome": "FAILURE",
+            "confidence": 0.65,
+            "validation_status": "VALIDATED",
+            "retrieved_experience_ids": [
+              "f32cf060-ba40-5b53-902f-394c270a85de",
+              "b2c58016-8135-52eb-bc06-17d58b570181",
+              "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+              "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+            ],
+            "llm_proposal": null,
+            "timestamp": "2026-11-27T21:15:00.695442+00:00",
+            "reward": 0.0
+          }
+        ],
+        "browser_state": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "retrieved_experiences": [
+          {
+            "experience_id": "f32cf060-ba40-5b53-902f-394c270a85de",
+            "run_id": "20261127T210430Z-b4c01347",
+            "persona": {
+              "persona_id": "first_time_user",
+              "name": "First-Time User",
+              "description": "A new visitor who explores before acting and needs clear labels.",
+              "experience_level": "beginner",
+              "technical_familiarity": "low",
+              "patience_level": "moderate",
+              "reading_preference": "plain language, concise instructions",
+              "navigation_behaviour": "explores obvious navigation before using search",
+              "accessibility_requirements": [],
+              "viewport": {
+                "width": 1365,
+                "height": 900
+              },
+              "interaction_preferences": [
+                "descriptive controls",
+                "clear feedback"
+              ],
+              "task_completion_expectations": [
+                "find the requested product",
+                "add it to cart"
+              ]
+            },
+            "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+            "attempt_number": 1,
+            "strategy_id": "STRATEGY_INITIAL_8bcf6c7d7039",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+            "page_context": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "application_context": {
+              "application_id": "TC-003",
+              "website": "https://www.thayyilsports.in/",
+              "allowed_domain": "thayyilsports.in"
+            },
+            "observed_state": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "evidence_references": [
+              "action_history.json"
+            ],
+            "previous_failure_analysis": "Initial execution attempt.",
+            "action_details": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "execution_result": {
+              "status": "incomplete",
+              "expected": [
+                "Open the Thayyil Sports storefront.",
+                "Use the visible site search control to search for the exact query \"jacket argentina\".",
+                "Choose the first relevant item in the search results.",
+                "Add only that first item to the cart.",
+                "Stop immediately when the site confirms the item is in the cart."
+              ],
+              "actual": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "objective_verified": false,
+              "failure_reason": "The agent stopped before the journey objective was verified."
+            },
+            "failure_category": "AGENT_RELATED",
+            "root_cause": "The agent stopped before the journey objective was verified.",
+            "learning_eligible": true,
+            "outcome": "FAILURE",
+            "reward": 0.0,
+            "confidence": 0.65,
+            "validation_status": "VALIDATED",
+            "timestamp": "2026-11-27T21:04:30.495796+00:00",
+            "schema_version": 1
+          },
+          {
+            "experience_id": "b2c58016-8135-52eb-bc06-17d58b570181",
+            "run_id": "20261127T210445Z-df86b794",
+            "persona": {
+              "persona_id": "first_time_user",
+              "name": "First-Time User",
+              "description": "A new visitor who explores before acting and needs clear labels.",
+              "experience_level": "beginner",
+              "technical_familiarity": "low",
+              "patience_level": "moderate",
+              "reading_preference": "plain language, concise instructions",
+              "navigation_behaviour": "explores obvious navigation before using search",
+              "accessibility_requirements": [],
+              "viewport": {
+                "width": 1365,
+                "height": 900
+              },
+              "interaction_preferences": [
+                "descriptive controls",
+                "clear feedback"
+              ],
+              "task_completion_expectations": [
+                "find the requested product",
+                "add it to cart"
+              ]
+            },
+            "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+            "attempt_number": 1,
+            "strategy_id": "STRATEGY_INITIAL_c08461e6ee51",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+            "page_context": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "application_context": {
+              "application_id": "TC-003",
+              "website": "https://www.thayyilsports.in/",
+              "allowed_domain": "thayyilsports.in"
+            },
+            "observed_state": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "evidence_references": [
+              "action_history.json"
+            ],
+            "previous_failure_analysis": "Initial execution attempt.",
+            "action_details": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "execution_result": {
+              "status": "incomplete",
+              "expected": [
+                "Open the Thayyil Sports storefront.",
+                "Use the visible site search control to search for the exact query \"jacket argentina\".",
+                "Choose the first relevant item in the search results.",
+                "Add only that first item to the cart.",
+                "Stop immediately when the site confirms the item is in the cart."
+              ],
+              "actual": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "objective_verified": false,
+              "failure_reason": "The agent stopped before the journey objective was verified."
+            },
+            "failure_category": "AGENT_RELATED",
+            "root_cause": "The agent stopped before the journey objective was verified.",
+            "learning_eligible": true,
+            "outcome": "FAILURE",
+            "reward": 0.0,
+            "confidence": 0.65,
+            "validation_status": "VALIDATED",
+            "timestamp": "2026-11-27T21:04:45.807813+00:00",
+            "schema_version": 1
+          },
+          {
+            "experience_id": "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+            "run_id": "20261127T211215Z-f42ab041",
+            "persona": {
+              "persona_id": "first_time_user",
+              "name": "First-Time User",
+              "description": "A new visitor who explores before acting and needs clear labels.",
+              "experience_level": "beginner",
+              "technical_familiarity": "low",
+              "patience_level": "moderate",
+              "reading_preference": "plain language, concise instructions",
+              "navigation_behaviour": "explores obvious navigation before using search",
+              "accessibility_requirements": [],
+              "viewport": {
+                "width": 1365,
+                "height": 900
+              },
+              "interaction_preferences": [
+                "descriptive controls",
+                "clear feedback"
+              ],
+              "task_completion_expectations": [
+                "find the requested product",
+                "add it to cart"
+              ]
+            },
+            "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+            "attempt_number": 1,
+            "strategy_id": "STRATEGY_INITIAL_7aedba4dbe8c",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+            "page_context": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "application_context": {
+              "application_id": "TC-003",
+              "website": "https://www.thayyilsports.in/",
+              "allowed_domain": "thayyilsports.in"
+            },
+            "observed_state": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "evidence_references": [
+              "action_history.json"
+            ],
+            "previous_failure_analysis": "Initial execution attempt.",
+            "action_details": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "execution_result": {
+              "status": "incomplete",
+              "expected": [
+                "Open the Thayyil Sports storefront.",
+                "Use the visible site search control to search for the exact query \"jacket argentina\".",
+                "Choose the first relevant item in the search results.",
+                "Add only that first item to the cart.",
+                "Stop immediately when the site confirms the item is in the cart."
+              ],
+              "actual": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "objective_verified": false,
+              "failure_reason": "The agent stopped before the journey objective was verified."
+            },
+            "failure_category": "AGENT_RELATED",
+            "root_cause": "The agent stopped before the journey objective was verified.",
+            "learning_eligible": true,
+            "outcome": "FAILURE",
+            "reward": 0.0,
+            "confidence": 0.65,
+            "validation_status": "VALIDATED",
+            "timestamp": "2026-11-27T21:12:15.284921+00:00",
+            "schema_version": 1
+          },
+          {
+            "experience_id": "a3e4d8c6-5443-5b9b-989a-ebd29d478707",
+            "run_id": "20261127T210402Z-69fe878e",
+            "persona": {
+              "persona_id": "first_time_user",
+              "name": "First-Time User",
+              "description": "A new visitor who explores before acting and needs clear labels.",
+              "experience_level": "beginner",
+              "technical_familiarity": "low",
+              "patience_level": "moderate",
+              "reading_preference": "plain language, concise instructions",
+              "navigation_behaviour": "explores obvious navigation before using search",
+              "accessibility_requirements": [],
+              "viewport": {
+                "width": 1365,
+                "height": 900
+              },
+              "interaction_preferences": [
+                "descriptive controls",
+                "clear feedback"
+              ],
+              "task_completion_expectations": [
+                "find the requested product",
+                "add it to cart"
+              ]
+            },
+            "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+            "attempt_number": 1,
+            "strategy_id": "STRATEGY_INITIAL_22ce55f5515f",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+            "page_context": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "application_context": {
+              "application_id": "TC-003",
+              "website": "https://www.thayyilsports.in/",
+              "allowed_domain": "thayyilsports.in"
+            },
+            "observed_state": {
+              "url": "https://www.thayyilsports.in/",
+              "title": "Store",
+              "visible_text": "Search",
+              "interactive_elements": [
+                {
+                  "tag": "button",
+                  "label": "Search"
+                }
+              ]
+            },
+            "evidence_references": [
+              "action_history.json"
+            ],
+            "previous_failure_analysis": "Initial execution attempt.",
+            "action_details": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "execution_result": {
+              "status": "incomplete",
+              "expected": [
+                "Open the Thayyil Sports storefront.",
+                "Use the visible site search control to search for the exact query \"jacket argentina\".",
+                "Choose the first relevant item in the search results.",
+                "Add only that first item to the cart.",
+                "Stop immediately when the site confirms the item is in the cart."
+              ],
+              "actual": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "objective_verified": false,
+              "failure_reason": "The agent stopped before the journey objective was verified."
+            },
+            "failure_category": "AGENT_RELATED",
+            "root_cause": "The agent stopped before the journey objective was verified.",
+            "learning_eligible": true,
+            "outcome": "FAILURE",
+            "reward": 0.0,
+            "confidence": 0.65,
+            "validation_status": "VALIDATED",
+            "timestamp": "2026-11-27T21:04:02.522523+00:00",
+            "schema_version": 1
+          }
+        ],
+        "retrieved_experience_ids": [
+          "f32cf060-ba40-5b53-902f-394c270a85de",
+          "b2c58016-8135-52eb-bc06-17d58b570181",
+          "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+          "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+        ],
+        "retrieval_history": [
+          {
+            "query": {
+              "application_id": "TC-003",
+              "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+              "failure_category": null,
+              "page_context": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "action": null
+            },
+            "experience_ids": [
+              "f32cf060-ba40-5b53-902f-394c270a85de",
+              "b2c58016-8135-52eb-bc06-17d58b570181",
+              "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+              "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+            ],
+            "timestamp": "2026-11-27T21:15:00.693442+00:00"
+          },
+          {
+            "query": {
+              "application_id": "TC-003",
+              "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+              "failure_category": "AGENT_RELATED",
+              "page_context": {
+                "url": "https://www.thayyilsports.in/",
+                "title": "Store",
+                "visible_text": "Search",
+                "interactive_elements": [
+                  {
+                    "tag": "button",
+                    "label": "Search"
+                  }
+                ]
+              },
+              "action": null
+            },
+            "experience_ids": [
+              "f32cf060-ba40-5b53-902f-394c270a85de",
+              "b2c58016-8135-52eb-bc06-17d58b570181",
+              "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+              "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+            ],
+            "timestamp": "2026-11-27T21:15:00.744014+00:00"
+          }
+        ],
+        "attempted_strategies": [
+          {
+            "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+            "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences."
+          }
+        ],
+        "strategies_to_avoid": [
+          {
+            "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+            "actions": [
+              {
+                "action": "finish",
+                "target": null,
+                "value": null,
+                "reason": "Evidence collection test.",
+                "expected_result": "The run stops.",
+                "confidence": 1.0
+              }
+            ],
+            "reason": "The agent stopped before the journey objective was verified."
+          }
+        ],
+        "current_evidence": {
+          "current_url": "https://www.thayyilsports.in/",
+          "current_title": "Store",
+          "error": "",
+          "failure_reason": "The agent stopped before the journey objective was verified.",
+          "action_error": false,
+          "unsafe_action": false,
+          "journey_incomplete": true,
+          "network_events": [],
+          "network_errors": [],
+          "console_errors": [],
+          "page_errors": [],
+          "website_hostname": "thayyilsports.in"
+        }
+      },
+      "proposal": null,
+      "validation": {
+        "status": "REJECTED",
+        "error": "The configured agent does not support adaptive retries."
+      },
+      "executed": false,
+      "timestamp": "2026-11-27T21:15:00.745014+00:00"
+    }
+  ],
+  "retrieved_experiences": [
+    {
+      "experience_id": "f32cf060-ba40-5b53-902f-394c270a85de",
+      "run_id": "20261127T210430Z-b4c01347",
+      "persona": {
+        "persona_id": "first_time_user",
+        "name": "First-Time User",
+        "description": "A new visitor who explores before acting and needs clear labels.",
+        "experience_level": "beginner",
+        "technical_familiarity": "low",
+        "patience_level": "moderate",
+        "reading_preference": "plain language, concise instructions",
+        "navigation_behaviour": "explores obvious navigation before using search",
+        "accessibility_requirements": [],
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "interaction_preferences": [
+          "descriptive controls",
+          "clear feedback"
+        ],
+        "task_completion_expectations": [
+          "find the requested product",
+          "add it to cart"
+        ]
+      },
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "attempt_number": 1,
+      "strategy_id": "STRATEGY_INITIAL_8bcf6c7d7039",
+      "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+      "page_context": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "application_context": {
+        "application_id": "TC-003",
+        "website": "https://www.thayyilsports.in/",
+        "allowed_domain": "thayyilsports.in"
+      },
+      "observed_state": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "evidence_references": [
+        "action_history.json"
+      ],
+      "previous_failure_analysis": "Initial execution attempt.",
+      "action_details": [
+        {
+          "action": "finish",
+          "target": null,
+          "value": null,
+          "reason": "Evidence collection test.",
+          "expected_result": "The run stops.",
+          "confidence": 1.0
+        }
+      ],
+      "execution_result": {
+        "status": "incomplete",
+        "expected": [
+          "Open the Thayyil Sports storefront.",
+          "Use the visible site search control to search for the exact query \"jacket argentina\".",
+          "Choose the first relevant item in the search results.",
+          "Add only that first item to the cart.",
+          "Stop immediately when the site confirms the item is in the cart."
+        ],
+        "actual": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "objective_verified": false,
+        "failure_reason": "The agent stopped before the journey objective was verified."
+      },
+      "failure_category": "AGENT_RELATED",
+      "root_cause": "The agent stopped before the journey objective was verified.",
+      "learning_eligible": true,
+      "outcome": "FAILURE",
+      "reward": 0.0,
+      "confidence": 0.65,
+      "validation_status": "VALIDATED",
+      "timestamp": "2026-11-27T21:04:30.495796+00:00",
+      "schema_version": 1
+    },
+    {
+      "experience_id": "b2c58016-8135-52eb-bc06-17d58b570181",
+      "run_id": "20261127T210445Z-df86b794",
+      "persona": {
+        "persona_id": "first_time_user",
+        "name": "First-Time User",
+        "description": "A new visitor who explores before acting and needs clear labels.",
+        "experience_level": "beginner",
+        "technical_familiarity": "low",
+        "patience_level": "moderate",
+        "reading_preference": "plain language, concise instructions",
+        "navigation_behaviour": "explores obvious navigation before using search",
+        "accessibility_requirements": [],
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "interaction_preferences": [
+          "descriptive controls",
+          "clear feedback"
+        ],
+        "task_completion_expectations": [
+          "find the requested product",
+          "add it to cart"
+        ]
+      },
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "attempt_number": 1,
+      "strategy_id": "STRATEGY_INITIAL_c08461e6ee51",
+      "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+      "page_context": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "application_context": {
+        "application_id": "TC-003",
+        "website": "https://www.thayyilsports.in/",
+        "allowed_domain": "thayyilsports.in"
+      },
+      "observed_state": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "evidence_references": [
+        "action_history.json"
+      ],
+      "previous_failure_analysis": "Initial execution attempt.",
+      "action_details": [
+        {
+          "action": "finish",
+          "target": null,
+          "value": null,
+          "reason": "Evidence collection test.",
+          "expected_result": "The run stops.",
+          "confidence": 1.0
+        }
+      ],
+      "execution_result": {
+        "status": "incomplete",
+        "expected": [
+          "Open the Thayyil Sports storefront.",
+          "Use the visible site search control to search for the exact query \"jacket argentina\".",
+          "Choose the first relevant item in the search results.",
+          "Add only that first item to the cart.",
+          "Stop immediately when the site confirms the item is in the cart."
+        ],
+        "actual": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "objective_verified": false,
+        "failure_reason": "The agent stopped before the journey objective was verified."
+      },
+      "failure_category": "AGENT_RELATED",
+      "root_cause": "The agent stopped before the journey objective was verified.",
+      "learning_eligible": true,
+      "outcome": "FAILURE",
+      "reward": 0.0,
+      "confidence": 0.65,
+      "validation_status": "VALIDATED",
+      "timestamp": "2026-11-27T21:04:45.807813+00:00",
+      "schema_version": 1
+    },
+    {
+      "experience_id": "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+      "run_id": "20261127T211215Z-f42ab041",
+      "persona": {
+        "persona_id": "first_time_user",
+        "name": "First-Time User",
+        "description": "A new visitor who explores before acting and needs clear labels.",
+        "experience_level": "beginner",
+        "technical_familiarity": "low",
+        "patience_level": "moderate",
+        "reading_preference": "plain language, concise instructions",
+        "navigation_behaviour": "explores obvious navigation before using search",
+        "accessibility_requirements": [],
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "interaction_preferences": [
+          "descriptive controls",
+          "clear feedback"
+        ],
+        "task_completion_expectations": [
+          "find the requested product",
+          "add it to cart"
+        ]
+      },
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "attempt_number": 1,
+      "strategy_id": "STRATEGY_INITIAL_7aedba4dbe8c",
+      "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+      "page_context": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "application_context": {
+        "application_id": "TC-003",
+        "website": "https://www.thayyilsports.in/",
+        "allowed_domain": "thayyilsports.in"
+      },
+      "observed_state": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "evidence_references": [
+        "action_history.json"
+      ],
+      "previous_failure_analysis": "Initial execution attempt.",
+      "action_details": [
+        {
+          "action": "finish",
+          "target": null,
+          "value": null,
+          "reason": "Evidence collection test.",
+          "expected_result": "The run stops.",
+          "confidence": 1.0
+        }
+      ],
+      "execution_result": {
+        "status": "incomplete",
+        "expected": [
+          "Open the Thayyil Sports storefront.",
+          "Use the visible site search control to search for the exact query \"jacket argentina\".",
+          "Choose the first relevant item in the search results.",
+          "Add only that first item to the cart.",
+          "Stop immediately when the site confirms the item is in the cart."
+        ],
+        "actual": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "objective_verified": false,
+        "failure_reason": "The agent stopped before the journey objective was verified."
+      },
+      "failure_category": "AGENT_RELATED",
+      "root_cause": "The agent stopped before the journey objective was verified.",
+      "learning_eligible": true,
+      "outcome": "FAILURE",
+      "reward": 0.0,
+      "confidence": 0.65,
+      "validation_status": "VALIDATED",
+      "timestamp": "2026-11-27T21:12:15.284921+00:00",
+      "schema_version": 1
+    },
+    {
+      "experience_id": "a3e4d8c6-5443-5b9b-989a-ebd29d478707",
+      "run_id": "20261127T210402Z-69fe878e",
+      "persona": {
+        "persona_id": "first_time_user",
+        "name": "First-Time User",
+        "description": "A new visitor who explores before acting and needs clear labels.",
+        "experience_level": "beginner",
+        "technical_familiarity": "low",
+        "patience_level": "moderate",
+        "reading_preference": "plain language, concise instructions",
+        "navigation_behaviour": "explores obvious navigation before using search",
+        "accessibility_requirements": [],
+        "viewport": {
+          "width": 1365,
+          "height": 900
+        },
+        "interaction_preferences": [
+          "descriptive controls",
+          "clear feedback"
+        ],
+        "task_completion_expectations": [
+          "find the requested product",
+          "add it to cart"
+        ]
+      },
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "attempt_number": 1,
+      "strategy_id": "STRATEGY_INITIAL_22ce55f5515f",
+      "strategy_description": "LLM-guided baseline journey using the current page state and retrieved JSON experiences.",
+      "page_context": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "application_context": {
+        "application_id": "TC-003",
+        "website": "https://www.thayyilsports.in/",
+        "allowed_domain": "thayyilsports.in"
+      },
+      "observed_state": {
+        "url": "https://www.thayyilsports.in/",
+        "title": "Store",
+        "visible_text": "Search",
+        "interactive_elements": [
+          {
+            "tag": "button",
+            "label": "Search"
+          }
+        ]
+      },
+      "evidence_references": [
+        "action_history.json"
+      ],
+      "previous_failure_analysis": "Initial execution attempt.",
+      "action_details": [
+        {
+          "action": "finish",
+          "target": null,
+          "value": null,
+          "reason": "Evidence collection test.",
+          "expected_result": "The run stops.",
+          "confidence": 1.0
+        }
+      ],
+      "execution_result": {
+        "status": "incomplete",
+        "expected": [
+          "Open the Thayyil Sports storefront.",
+          "Use the visible site search control to search for the exact query \"jacket argentina\".",
+          "Choose the first relevant item in the search results.",
+          "Add only that first item to the cart.",
+          "Stop immediately when the site confirms the item is in the cart."
+        ],
+        "actual": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "objective_verified": false,
+        "failure_reason": "The agent stopped before the journey objective was verified."
+      },
+      "failure_category": "AGENT_RELATED",
+      "root_cause": "The agent stopped before the journey objective was verified.",
+      "learning_eligible": true,
+      "outcome": "FAILURE",
+      "reward": 0.0,
+      "confidence": 0.65,
+      "validation_status": "VALIDATED",
+      "timestamp": "2026-11-27T21:04:02.522523+00:00",
+      "schema_version": 1
+    }
+  ],
+  "retrieval_history": [
+    {
+      "query": {
+        "application_id": "TC-003",
+        "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+        "failure_category": null,
+        "page_context": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "action": null
+      },
+      "experience_ids": [
+        "f32cf060-ba40-5b53-902f-394c270a85de",
+        "b2c58016-8135-52eb-bc06-17d58b570181",
+        "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+        "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+      ],
+      "timestamp": "2026-11-27T21:15:00.693442+00:00"
+    },
+    {
+      "query": {
+        "application_id": "TC-003",
+        "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+        "failure_category": "AGENT_RELATED",
+        "page_context": {
+          "url": "https://www.thayyilsports.in/",
+          "title": "Store",
+          "visible_text": "Search",
+          "interactive_elements": [
+            {
+              "tag": "button",
+              "label": "Search"
+            }
+          ]
+        },
+        "action": null
+      },
+      "experience_ids": [
+        "f32cf060-ba40-5b53-902f-394c270a85de",
+        "b2c58016-8135-52eb-bc06-17d58b570181",
+        "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+        "a3e4d8c6-5443-5b9b-989a-ebd29d478707"
+      ],
+      "timestamp": "2026-11-27T21:15:00.744014+00:00"
+    }
+  ],
+  "final_status": "incomplete",
+  "updated_at": "2026-11-27T21:15:00.770650+00:00",
+  "schema_version": 1,
+  "final_execution_result": {
+    "run_id": "20261127T211500Z-71d10632",
+    "batch_id": null,
+    "test_case_id": "TC-003",
+    "name": "Search Thayyil Sports for an Argentina jacket and add the first result to cart",
+    "website": "https://www.thayyilsports.in/",
+    "persona_id": "first_time_user",
+    "persona_name": "First-Time User",
+    "goal": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+    "status": "incomplete",
+    "completed": false,
+    "step_count": 1,
+    "started_at": "2026-11-27T21:15:00.690442+00:00",
+    "finished_at": "2026-11-27T21:15:00.768646+00:00",
+    "result": "The configured agent does not support adaptive retries.",
+    "error": "The retry strategy could not be validated.",
+    "analysis": {
+      "status": "completed",
+      "summary": "The search control was available.",
+      "strengths": [
+        {
+          "observation": "A Search control was available.",
+          "persona_impact": "It offers a clear entry point to search.",
+          "recommendation": "Keep the visible search control.",
+          "priority": "low",
+          "evidence": [
+            {
+              "step": 0,
+              "stage": "initial",
+              "source": "control",
+              "quote": "Search"
+            }
+          ]
+        }
+      ],
+      "improvements": [],
+      "not_assessed": [
+        "Search results and cart journey."
+      ],
+      "evidence_scope": "The initial page only."
+    },
+    "artifacts": {
+      "directory": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\pytest-of-Administrator\\pytest-62\\test_run_persists_persona_anal0\\TC-003\\20261127T211500Z-71d10632",
+      "screenshots": [
+        "screenshots/step_000.png"
+      ],
+      "video": null,
+      "action_history": "action_history.json",
+      "ux_analysis": "ux_analysis.json"
+    },
+    "duration_seconds": 0.08
+  },
+  "finished_at": "2026-11-27T21:15:00.793610+00:00"
+}

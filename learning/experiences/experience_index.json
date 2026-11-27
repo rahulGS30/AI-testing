@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "experience_id": "a3e4d8c6-5443-5b9b-989a-ebd29d478707",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_22ce55f5515f",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "f32cf060-ba40-5b53-902f-394c270a85de",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_8bcf6c7d7039",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "b2c58016-8135-52eb-bc06-17d58b570181",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_c08461e6ee51",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "b0f933fd-b1bc-5b74-a6d2-b81fc80ef621",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_7aedba4dbe8c",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "7314112c-6098-5e08-8928-d4ec886b3516",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_4feec0670d5d",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "c5212780-fefe-542d-a185-b1ca3c959b00",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_44f1687a009d",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    },
+    {
+      "experience_id": "2fcaf75f-22d4-5881-9bdd-53d4b24e015d",
+      "application_id": "TC-003",
+      "website": "https://www.thayyilsports.in/",
+      "page_url": "https://www.thayyilsports.in/",
+      "page_title": "Store",
+      "journey_objective": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+      "action_types": [
+        "finish"
+      ],
+      "locator_strategies": [],
+      "failure_category": "AGENT_RELATED",
+      "strategy_id": "STRATEGY_INITIAL_a19d508f5463",
+      "outcome": "FAILURE",
+      "validation_status": "VALIDATED",
+      "learning_eligible": true
+    }
+  ]
+}

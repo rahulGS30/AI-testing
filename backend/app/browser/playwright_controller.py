@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import re
 import socket
+import json
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -267,6 +268,10 @@ class PlaywrightController:
         self.blocked_navigation: str | None = None
         self.video_directory = run_directory / "video"
         self.screenshot_directory = run_directory / "screenshots"
+        self.browser_events: list[dict] = []
+        self.console_errors: list[str] = []
+        self.network_events: list[dict] = []
+        self.network_errors: list[dict] = []
 
     def __enter__(self) -> "PlaywrightController":
         validate_public_target(str(self.test_case.website), self.test_case.allowed_domain)
@@ -291,6 +296,50 @@ class PlaywrightController:
                 ),
             )
             self.context.set_default_timeout(self.timeout_ms)
+            self.page.on(
+                "console",
+                lambda message: (
+                    self.console_errors.append(message.text)
+                    if message.type == "error"
+                    else None
+                ),
+            )
+            self.page.on(
+                "pageerror",
+                lambda error: self.browser_events.append(
+                    {"type": "pageerror", "message": str(error)}
+                ),
+            )
+            self.page.on(
+                "request",
+                lambda request: self.network_events.append(
+                    {
+                        "type": "request",
+                        "method": request.method,
+                        "url": request.url,
+                    }
+                ),
+            )
+            self.page.on(
+                "response",
+                lambda response: self.network_events.append(
+                    {
+                        "type": "response",
+                        "status": response.status,
+                        "url": response.url,
+                    }
+                ),
+            )
+            self.page.on(
+                "requestfailed",
+                lambda request: self.network_errors.append(
+                    {
+                        "url": request.url,
+                        "method": request.method,
+                        "failure": request.failure,
+                    }
+                ),
+            )
         except Exception:
             self.close()
             raise
@@ -367,6 +416,70 @@ class PlaywrightController:
         path = self.screenshot_directory / filename
         self.page.screenshot(path=str(path), full_page=False, animations="disabled")
         return str(path.relative_to(self.run_directory))
+
+    def capture_diagnostics(
+        self, attempt_number: int, action_history: list[dict] | None = None
+    ) -> dict[str, object]:
+        assert self.page is not None
+        attempt_directory = self.run_directory / f"attempt_{attempt_number}"
+        attempt_directory.mkdir(parents=True, exist_ok=True)
+        screenshot_path = attempt_directory / "screenshot.png"
+        self.page.screenshot(path=str(screenshot_path), full_page=False)
+        try:
+            dom_snapshot = self.page.content()
+        except PlaywrightError:
+            dom_snapshot = ""
+        try:
+            accessibility_snapshot = self.page.locator("body").aria_snapshot(
+                timeout=min(self.timeout_ms, 5000)
+            )
+        except (AttributeError, PlaywrightError):
+            accessibility_snapshot = ""
+        (attempt_directory / "dom_snapshot.json").write_text(
+            json.dumps(
+                {"url": self.page.url, "title": self.page.title(), "html": dom_snapshot},
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        (attempt_directory / "accessibility_snapshot.json").write_text(
+            json.dumps(accessibility_snapshot, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        browser_events = {
+            "console_errors": self.console_errors[-200:],
+            "browser_events": self.browser_events[-200:],
+            "network_events": self.network_events[-500:],
+            "network_errors": self.network_errors[-200:],
+        }
+        (attempt_directory / "browser_events.json").write_text(
+            json.dumps(browser_events, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        action_history_path = attempt_directory / "action_history.json"
+        action_history_path.write_text(
+            json.dumps(action_history or [], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        return {
+            "screenshot_reference": str(screenshot_path.relative_to(self.run_directory)),
+            "dom_snapshot_reference": str(
+                (attempt_directory / "dom_snapshot.json").relative_to(self.run_directory)
+            ),
+            "accessibility_snapshot_reference": str(
+                (attempt_directory / "accessibility_snapshot.json").relative_to(self.run_directory)
+            ),
+            "browser_events_reference": str(
+                (attempt_directory / "browser_events.json").relative_to(self.run_directory)
+            ),
+            "action_history_reference": str(action_history_path.relative_to(self.run_directory)),
+            "dom_snapshot_excerpt": dom_snapshot[:16000],
+            "accessibility_snapshot": accessibility_snapshot[:8000]
+            if isinstance(accessibility_snapshot, str)
+            else accessibility_snapshot,
+            **browser_events,
+        }
 
     def close(self) -> None:
         try:
