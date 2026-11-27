@@ -1,0 +1,33 @@
+(.venv) C:\Gen-AI>python backend\run_test.py TC-003 --headed    
+INFO HTTP Request: POST https://mavericks-ai.services.ai.azure.com/openai/v1/responses "HTTP/1.1 200 OK"
+INFO HTTP Request: POST https://mavericks-ai.services.ai.azure.com/openai/v1/responses "HTTP/1.1 200 OK"
+WARNING Agent decision validation failed (fields=[':value_error'])
+ERROR Test run 20261127T171707Z-f1484c11 failed (RuntimeError)
+{
+  "run_id": "20261127T171707Z-f1484c11",
+  "test_case_id": "TC-003",
+  "name": "Search Thayyil Sports for an Argentina jacket and add the first result to cart",
+  "website": "https://www.thayyilsports.in/",
+  "persona_id": "first_time_user",
+  "goal": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+  "status": "failed",
+  "completed": false,
+  "step_count": 2,
+  "started_at": "2026-11-27T17:17:07.152595+00:00",
+  "finished_at": "2026-11-27T17:17:30.125870+00:00",
+  "result": null,
+  "error": "The AI response did not contain a valid browser action.",
+  "artifacts": {
+    "directory": "artifacts\\20261127T171707Z-f1484c11",
+    "screenshots": [
+      "screenshots\\step_000.png",
+      "screenshots\\step_001.png"
+    ],
+    "video": "video\\journey.webm",
+    "action_history": "action_history.json"
+  },
+  "duration_seconds": 22.97
+}
+
+Run 20261127T171707Z-f1484c11: failed — The AI response did not contain a valid browser action.
+Artifacts: C:\Gen-AI\artifacts\20261127T171707Z-f1484c11

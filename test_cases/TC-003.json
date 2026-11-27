@@ -1,0 +1,23 @@
+{
+  "test_case_id": "TC-003",
+  "name": "Search Thayyil Sports for an Argentina jacket and add the first result to cart",
+  "website": "https://www.thayyilsports.in/",
+  "allowed_domain": "thayyilsports.in",
+  "persona_id": "first_time_user",
+  "goal": "Use the site's search control to search for \"jacket argentina\", open the first relevant search result, and add that first item to the cart. Stop after the site confirms the item is in the cart.",
+  "completion_criteria": [
+    "Open the Thayyil Sports storefront.",
+    "Use the visible site search control to search for the exact query \"jacket argentina\".",
+    "Choose the first relevant item in the search results.",
+    "Add only that first item to the cart.",
+    "Stop immediately when the site confirms the item is in the cart."
+  ],
+  "product_keywords": ["jacket", "argentina"],
+  "cart_confirmation_phrases": [
+    "added to cart",
+    "added to your cart",
+    "added to the cart",
+    "added successfully"
+  ],
+  "max_steps": 18
+}

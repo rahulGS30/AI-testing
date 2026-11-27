@@ -1,0 +1,22 @@
+{
+  "test_case_id": "TC-002",
+  "name": "Search Amazon for iPhone 17 and add it to cart",
+  "website": "https://www.amazon.com",
+  "allowed_domain": "amazon.com",
+  "persona_id": "first_time_user",
+  "goal": "Find an iPhone 17 product on Amazon and add one suitable result to the cart.",
+  "completion_criteria": [
+    "The browser is on Amazon's public storefront.",
+    "Search for the exact phrase iPhone 17.",
+    "Choose a relevant iPhone 17 product, when available.",
+    "Add exactly one product to the cart.",
+    "Stop immediately when the page confirms the item is in the cart."
+  ],
+  "product_keywords": ["iphone", "17"],
+  "cart_confirmation_phrases": [
+    "added to cart",
+    "added to your cart",
+    "added to the cart"
+  ],
+  "max_steps": 15
+}
