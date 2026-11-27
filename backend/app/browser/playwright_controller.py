@@ -253,11 +253,13 @@ class PlaywrightController:
         run_directory: Path,
         timeout_ms: int,
         headless: bool = True,
+        viewport: dict[str, int] | None = None,
     ) -> None:
         self.test_case = test_case
         self.run_directory = run_directory
         self.timeout_ms = timeout_ms
         self.headless = headless
+        self.viewport = viewport or {"width": 1365, "height": 900}
         self.playwright: Playwright | None = None
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
@@ -274,7 +276,7 @@ class PlaywrightController:
         try:
             self.browser = self.playwright.chromium.launch(headless=self.headless)
             self.context = self.browser.new_context(
-                viewport={"width": 1365, "height": 900},
+                viewport=self.viewport,
                 record_video_dir=str(self.video_directory),
                 record_video_size={"width": 1365, "height": 900},
                 accept_downloads=False,

@@ -2,10 +2,16 @@ import argparse
 import json
 import logging
 import sys
-
 from app.config import settings
 from app.models.test_case import load_test_case
-from app.orchestrator.test_runner import CASES_DIRECTORY, run_test_case
+from app.orchestrator.run_batch import (
+    create_batch_record,
+    execute_batch,
+    new_batch_id,
+    new_run_id,
+    save_batch_record,
+)
+from app.orchestrator.test_runner import CASES_DIRECTORY
 from app.personas.persona_manager import list_personas
 
 
@@ -46,30 +52,38 @@ def main(argv: list[str] | None = None) -> int:
         if args.all_personas
         else args.persona or [test_case.persona_id]
     )
-    results = []
-    for persona_id in selected_personas:
-        persona_case = test_case.model_copy(update={"persona_id": persona_id})
-        result = run_test_case(persona_case, headless=not args.headed)
-        results.append(result)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        print(
-            f"\nPersona {persona_id} — run {result['run_id']}: "
-            f"{result['status']} — "
-            f"{result.get('result') or result.get('error') or 'No result detail'}"
-        )
+    run_ids = [new_run_id() for _ in selected_personas]
+    batch = create_batch_record(
+        test_case, selected_personas, run_ids, new_batch_id()
+    )
+    save_batch_record(batch, settings.artifacts_dir)
+    batch = execute_batch(
+        test_case,
+        batch,
+        headed=args.headed,
+        artifacts_root=settings.artifacts_dir,
+    )
+    print(json.dumps(batch, indent=2, ensure_ascii=False))
+    print(
+        f"\nPersona run {batch['run_id']}: {batch['status']} "
+        f"({batch['finished_count']}/{batch['persona_count']} runs finished)"
+    )
+    print(
+        "Batch manifest: "
+        f"{settings.artifacts_dir / test_case.test_case_id / 'batches' / (batch['batch_id'] + '.json')}"
+    )
+    for run in batch["runs"]:
         run_directory = (
-            settings.artifacts_dir / result["test_case_id"] / result["run_id"]
+            settings.artifacts_dir
+            / test_case.test_case_id
+            / batch["batch_id"]
+            / run["persona_id"]
         )
-        print(f"Artifacts: {run_directory}")
-
-    if len(results) > 1:
-        print("\nPersona run summary:")
-        for result in results:
-            print(
-                f"- {result['persona_id']}: {result['status']} "
-                f"(run {result['run_id']})"
-            )
-    return 0 if all(result["status"] == "completed" for result in results) else 1
+        print(
+            f"- {run['persona_id']}: {run['status']}; "
+            f"analysis={run['analysis_status']}; artifacts={run_directory}"
+        )
+    return 0 if batch["status"] == "completed" else 1
 
 
 if __name__ == "__main__":

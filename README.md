@@ -122,8 +122,8 @@ Add `--headed` to any persona command to show Chromium for each sequential run.
 
 Test cases are independent JSON files in [test_cases/](test_cases/). Add a
 uniquely named JSON file whose `test_case_id` matches its filename to add a
-scenario. Runs are saved under
-`artifacts/<test-case-id>/<run-id>/`, with `result.json`,
+scenario. Persona runs are grouped under one batch/run ID at
+`artifacts/<test-case-id>/<batch-id>/<persona-id>/`, with `result.json`,
 `action_history.json`, screenshots, and a `video/journey.webm` recording,
 grouped by test case.
 The CLI exits with code 0 only when the cart goal is confirmed. Other outcomes
@@ -140,8 +140,11 @@ result file.
 - `POST /api/test-cases/{id}/runs` — queue one or more persona runs
 - `GET /api/test-cases/{id}/runs` and
   `GET /api/test-cases/{id}/runs/{run_id}` — list runs or retrieve a run status
+- `GET /api/test-cases/{id}/batches` and
+  `GET /api/test-cases/{id}/batches/{batch_id}` — retrieve multi-persona run
+  batches with each persona's run and evidence links
 - `GET /api/test-cases/{id}/runs/{run_id}/artifacts/{path}` — retrieve a
-  run's result, action history, screenshot, or video
+  run's result, action history, persona UX analysis, screenshot, or video
 
 Run creation accepts `{"persona_ids":["elderly_user","low_vision_user"]}`.
 Omit `persona_ids` to use the persona configured on the test case. A queued
@@ -153,12 +156,35 @@ Each run is stored under its test case:
 ```text
 artifacts/
   TC-003/
-    <run-id>/
-      result.json
-      action_history.json
-      screenshots/
-      video/
+    batches/
+      <batch-id>.json
+    <batch-id>/
+      elderly_user/
+        result.json
+        action_history.json
+        ux_analysis.json
+        screenshots/
+        video/
+      low_vision_user/
+        result.json
+        action_history.json
+        ux_analysis.json
+        screenshots/
+        video/
 ```
+
+The batch ID is also the shared parent run ID. Each persona folder contains
+that persona's readable name and unique run ID in its JSON metadata and keeps
+the screenshots, video, action history, result, and UX analysis together. The
+batch manifest links persona IDs and names to their individual run IDs and
+evidence URLs.
+
+After browser execution, each run includes a persona-specific UX analysis with
+evidence-cited strengths, improvement suggestions, and aspects not assessed.
+Every recommendation cites recorded page text, controls, actions, or run status;
+unsupported items are rejected rather than presented as findings. This is
+evidence-grounded AI assistance, not a guarantee of perfect correctness or a
+replacement for real participant research.
 
 ## Security and scope
 

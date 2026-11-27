@@ -1,26 +1,27 @@
+from types import SimpleNamespace
+
 from app import cli
 from app.models.test_case import load_test_case
 from app.orchestrator.test_runner import CASES_DIRECTORY
 
 
 def test_cli_runs_selected_personas_and_returns_failure_if_any_run_fails(
-    monkeypatch, capsys
+    monkeypatch, capsys, tmp_path
 ) -> None:
-    calls = []
+    monkeypatch.setattr(cli, "settings", SimpleNamespace(artifacts_dir=tmp_path))
 
-    def run_test_case(test_case, *, headless):
-        calls.append((test_case.persona_id, headless))
-        status = "blocked" if test_case.persona_id == "low_vision_user" else "completed"
-        return {
-            "run_id": f"run-{test_case.persona_id}",
-            "test_case_id": test_case.test_case_id,
-            "persona_id": test_case.persona_id,
-            "status": status,
-            "result": "result",
-            "error": None,
-        }
+    def execute_batch(test_case, batch, *, headed, artifacts_root):
+        assert headed
+        assert artifacts_root == tmp_path
+        for run in batch["runs"]:
+            run["status"] = (
+                "blocked" if run["persona_id"] == "low_vision_user" else "completed"
+            )
+        batch["status"] = "finished_with_issues"
+        batch["finished_count"] = 3
+        return batch
 
-    monkeypatch.setattr(cli, "run_test_case", run_test_case)
+    monkeypatch.setattr(cli, "execute_batch", execute_batch)
 
     exit_code = cli.main(
         [
@@ -34,55 +35,54 @@ def test_cli_runs_selected_personas_and_returns_failure_if_any_run_fails(
     )
 
     assert exit_code == 1
-    assert calls == [
-        ("elderly_user", False),
-        ("low_vision_user", False),
-        ("non_native_english_speaker", False),
-    ]
-    assert "Persona run summary:" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "Persona run " in output
+    assert "artifacts=" in output
+    assert "low_vision_user" in output
 
 
-def test_cli_all_personas_uses_every_configured_persona(monkeypatch, capsys) -> None:
-    calls = []
+def test_cli_all_personas_uses_every_configured_persona(
+    monkeypatch, capsys, tmp_path
+) -> None:
+    monkeypatch.setattr(cli, "settings", SimpleNamespace(artifacts_dir=tmp_path))
 
-    def run_test_case(test_case, *, headless):
-        calls.append(test_case.persona_id)
-        return {
-            "run_id": f"run-{test_case.persona_id}",
-            "test_case_id": test_case.test_case_id,
-            "persona_id": test_case.persona_id,
-            "status": "completed",
-            "result": "completed",
-            "error": None,
-        }
+    def execute_batch(test_case, batch, *, headed, artifacts_root):
+        assert not headed
+        assert artifacts_root == tmp_path
+        for run in batch["runs"]:
+            run["status"] = "completed"
+        batch["status"] = "completed"
+        batch["finished_count"] = len(batch["runs"])
+        return batch
 
-    monkeypatch.setattr(cli, "run_test_case", run_test_case)
+    monkeypatch.setattr(cli, "execute_batch", execute_batch)
 
     exit_code = cli.main(["TC-003", "--all-personas"])
 
     assert exit_code == 0
-    assert calls == [persona.persona_id for persona in cli.list_personas()]
-    assert "Persona run summary:" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "Persona run " in output
+    assert all(
+        persona.persona_id in output for persona in cli.list_personas()
+    )
 
 
-def test_cli_without_persona_uses_test_case_default(monkeypatch, capsys) -> None:
-    calls = []
+def test_cli_without_persona_uses_test_case_default(
+    monkeypatch, capsys, tmp_path
+) -> None:
+    monkeypatch.setattr(cli, "settings", SimpleNamespace(artifacts_dir=tmp_path))
+    default_persona_id = load_test_case(CASES_DIRECTORY, "TC-003").persona_id
 
-    def run_test_case(test_case, *, headless):
-        calls.append(test_case.persona_id)
-        return {
-            "run_id": "run-default",
-            "test_case_id": test_case.test_case_id,
-            "persona_id": test_case.persona_id,
-            "status": "completed",
-            "result": "completed",
-            "error": None,
-        }
+    def execute_batch(test_case, batch, *, headed, artifacts_root):
+        assert [run["persona_id"] for run in batch["runs"]] == [default_persona_id]
+        batch["runs"][0]["status"] = "completed"
+        batch["status"] = "completed"
+        batch["completed_count"] = 1
+        return batch
 
-    monkeypatch.setattr(cli, "run_test_case", run_test_case)
+    monkeypatch.setattr(cli, "execute_batch", execute_batch)
 
     assert cli.main(["TC-003"]) == 0
-    assert calls == [load_test_case(CASES_DIRECTORY, "TC-003").persona_id]
     capsys.readouterr()
 
 
