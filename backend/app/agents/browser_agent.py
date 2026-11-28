@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.config import settings
 from app.llm.azure_client import create_client, uses_responses_api
 from app.llm.prompts import SYSTEM_PROMPT
+from app.llm.token_usage import TokenUsageTracker
 from app.models.browser_action import BrowserAction
 from app.models.persona import Persona
 from app.models.test_case import TestCase
@@ -16,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 class BrowserAgent:
-    def __init__(self) -> None:
+    def __init__(self, token_usage: TokenUsageTracker | None = None) -> None:
         self.client, self.extra_query = create_client()
+        self.token_usage = token_usage
 
     def decide(
         self,
@@ -40,6 +42,7 @@ class BrowserAgent:
                         "name": test_case.name,
                         "goal": test_case.goal,
                         "completion_criteria": test_case.completion_criteria,
+                        "completion_mode": test_case.completion_mode,
                         "product_keywords": test_case.product_keywords,
                         "cart_confirmation_phrases": (
                             test_case.cart_confirmation_phrases
@@ -64,6 +67,8 @@ class BrowserAgent:
                     max_output_tokens=500,
                     **request_options,
                 )
+                if self.token_usage is not None:
+                    self.token_usage.record_response("browser_action", response)
                 content = response.output_text
             else:
                 response = self.client.chat.completions.create(
@@ -76,6 +81,8 @@ class BrowserAgent:
                     max_tokens=500,
                     **request_options,
                 )
+                if self.token_usage is not None:
+                    self.token_usage.record_response("browser_action", response)
                 content = response.choices[0].message.content
             if not content:
                 raise ValueError("Azure AI returned an empty action.")

@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import settings
 from app.models.test_case import TestCase
+from app.storage.gcs_artifacts import upload_run_artifacts
 from app.orchestrator.test_runner import run_test_case
 from app.personas.persona_manager import get_persona
 
@@ -57,6 +58,7 @@ def create_batch_record(
                     "video": None,
                     "action_history": "action_history.json",
                     "ux_analysis": "ux_analysis.json",
+                    "token_usage": "token_usage.json",
                 },
                 "artifact_urls": {
                     "run": (
@@ -73,6 +75,10 @@ def create_batch_record(
                     "ux_analysis": (
                         f"/api/test-cases/{test_case.test_case_id}/runs/{run_id}"
                         "/artifacts/ux_analysis.json"
+                    ),
+                    "token_usage": (
+                        f"/api/test-cases/{test_case.test_case_id}/runs/{run_id}"
+                        "/artifacts/token_usage.json"
                     ),
                     "screenshots": [],
                     "video": None,
@@ -169,6 +175,7 @@ def execute_batch(
                 encoding="utf-8",
             )
             result["startup_error_type"] = type(exc).__name__
+            upload_run_artifacts(run_directory, result)
 
         run["status"] = result["status"]
         run["analysis_status"] = result.get("analysis", {}).get("status", "unavailable")
@@ -181,6 +188,7 @@ def execute_batch(
         run["result"] = result.get("result")
         run["error"] = result.get("error")
         run["artifacts"] = result.get("artifacts", run["artifacts"])
+        run["cloud_storage"] = result.get("cloud_storage")
         run["artifact_urls"]["screenshots"] = [
             f"/api/test-cases/{test_case.test_case_id}/runs/{run['run_id']}/artifacts/"
             + path.replace("\\", "/")
@@ -190,6 +198,11 @@ def execute_batch(
             run["artifact_urls"]["video"] = (
                 f"/api/test-cases/{test_case.test_case_id}/runs/{run['run_id']}"
                 "/artifacts/video/journey.webm"
+            )
+        if run["artifacts"].get("token_usage"):
+            run["artifact_urls"]["token_usage"] = (
+                f"/api/test-cases/{test_case.test_case_id}/runs/{run['run_id']}"
+                "/artifacts/token_usage.json"
             )
         batch["finished_count"] = sum(
             item["status"] in {"completed", "blocked", "incomplete", "max_steps", "failed"}

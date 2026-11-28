@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -13,6 +14,9 @@ class TestCase(BaseModel):
     persona_id: str
     goal: str
     completion_criteria: list[str] = Field(min_length=1)
+    completion_mode: Literal["cart_confirmation", "agent_reported"] = (
+        "cart_confirmation"
+    )
     product_keywords: list[str] = Field(default_factory=list)
     cart_confirmation_phrases: list[str] = Field(
         default_factory=lambda: ["added to cart"]
@@ -34,12 +38,17 @@ class TestCase(BaseModel):
             raise ValueError("Test case websites must use HTTPS")
         return value
 
-    @field_validator("product_keywords", "cart_confirmation_phrases")
+    @field_validator("product_keywords")
     @classmethod
-    def require_nonempty_terms(cls, value: list[str]) -> list[str]:
+    def normalize_product_keywords(cls, value: list[str]) -> list[str]:
+        return [term.strip() for term in value if term.strip()]
+
+    @field_validator("cart_confirmation_phrases")
+    @classmethod
+    def require_nonempty_confirmation_phrases(cls, value: list[str]) -> list[str]:
         terms = [term.strip() for term in value if term.strip()]
         if not terms:
-            raise ValueError("Search and cart confirmation terms cannot be empty")
+            raise ValueError("Cart confirmation phrases cannot be empty")
         return terms
 
 

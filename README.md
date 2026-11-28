@@ -24,14 +24,16 @@ network requests are blocked.
 
 ## Current status
 
-**Phase 1 and browser-runner foundation:** FastAPI health/persona endpoints,
-Azure AI Foundry configuration, structured action/persona models, a
-JSON-defined Amazon and Thayyil Sports test case, terminal runner, Playwright
-observation/action loop, per-run video/screenshots/JSON evidence, tests, and the
-React dashboard.
+**Implemented:** FastAPI health/persona and run APIs, Azure AI Foundry
+configuration, saved and custom public-HTTPS test runs, persona selection,
+Playwright screenshots/video, evidence-backed UX analysis, per-call token usage
+logs, Google Cloud Storage backups of each persona's result artifacts and
+dashboard-generated PDF reports, run history, and a React dashboard for reports
+and artifacts.
 
-**Not implemented yet:** UX/accessibility analysis, axe-core, reports, API
-test-run orchestration, dashboard execution controls, and human review.
+Custom task completion is agent-reported and is not independently verified.
+**Not implemented yet:** axe-core scans, database-backed history/token usage,
+user authentication, and human review.
 
 ## Quick start
 
@@ -58,6 +60,8 @@ The backend starts without Azure credentials. Copy `.env.example` to `.env` and
 configure the Azure AI Foundry values to enable the LLM connectivity check.
 Set `AZURE_AI_API_MODE` to `azure_openai`, `openai_v1`, or `foundry_models` to
 match the endpoint format.
+authenticate with Google Cloud Application Default Credentials to upload run
+artifacts to the `autotest-screenshot` bucket; see [docs/setup.md](docs/setup.md).
 
 You can instead create a root-level `settings.local.json` (it is gitignored)
 and provide your deployment settings there:
@@ -138,13 +142,32 @@ result file.
 - `GET /api/test-cases` and `GET /api/test-cases/{id}` — list and retrieve
   runnable JSON test cases
 - `POST /api/test-cases/{id}/runs` — queue one or more persona runs
+- `POST /api/runs/custom` — run a user-supplied public HTTPS URL and task for
+  selected personas; completion is agent-reported and is not independently
+  verified
+- `GET /api/runs` — list saved and custom runs for the dashboard history
 - `GET /api/test-cases/{id}/runs` and
   `GET /api/test-cases/{id}/runs/{run_id}` — list runs or retrieve a run status
 - `GET /api/test-cases/{id}/batches` and
   `GET /api/test-cases/{id}/batches/{batch_id}` — retrieve multi-persona run
   batches with each persona's run and evidence links
 - `GET /api/test-cases/{id}/runs/{run_id}/artifacts/{path}` — retrieve a
-  run's result, action history, persona UX analysis, screenshot, or video
+  run's result, action history, persona UX analysis, token usage, screenshot,
+  or video
+
+Example custom-run request:
+
+```json
+{
+  "website": "https://example.com/",
+  "task": "Find the help page.",
+  "persona_ids": ["first_time_user"]
+}
+```
+
+Custom runs use the same browser safety checks as saved tests: only public
+HTTPS navigation within the submitted website's domain is allowed; sign-in,
+checkout, purchases, and sensitive data entry remain blocked.
 
 Run creation accepts `{"persona_ids":["elderly_user","low_vision_user"]}`.
 Omit `persona_ids` to use the persona configured on the test case. A queued
@@ -163,6 +186,7 @@ artifacts/
         result.json
         action_history.json
         ux_analysis.json
+        token_usage.json
         screenshots/
         video/
       low_vision_user/

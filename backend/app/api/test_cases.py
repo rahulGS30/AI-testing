@@ -6,10 +6,11 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
 from app.config import settings
 from app.models.test_case import TestCase, load_test_case
@@ -23,11 +24,14 @@ from app.orchestrator.run_batch import (
 )
 from app.orchestrator.test_runner import CASES_DIRECTORY
 from app.personas.persona_manager import get_persona
+from app.storage.gcs_artifacts import BUCKET_NAME, upload_report_pdf as send_report_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/test-cases", tags=["test-cases", "runs"])
+runs_router = APIRouter(prefix="/api/runs", tags=["runs"])
 RUN_ID_PATTERN = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}$")
 PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
+MAX_REPORT_PDF_BYTES = 10 * 1024 * 1024
 
 
 class RunRequest(BaseModel):
@@ -35,6 +39,46 @@ class RunRequest(BaseModel):
 
     persona_ids: list[str] | None = Field(default=None, min_length=1)
     headed: bool = False
+
+
+class CustomRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    website: HttpUrl
+    task: str = Field(min_length=1, max_length=1000)
+    persona_ids: list[str] = Field(min_length=1)
+    headed: bool = False
+
+    @field_validator("website")
+    @classmethod
+    def require_https_website(cls, value: HttpUrl) -> HttpUrl:
+        parsed = urlsplit(str(value))
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.port not in (None, 443)
+        ):
+            raise ValueError("Custom test websites must be public HTTPS URLs on port 443.")
+        return value
+
+    @field_validator("task")
+    @classmethod
+    def require_nonempty_task(cls, value: str) -> str:
+        task = value.strip()
+        if not task:
+            raise ValueError("Task must not be empty.")
+        return task
+
+
+def _load_test_case(test_case_id: str) -> TestCase:
+    try:
+        return load_test_case(CASES_DIRECTORY, test_case_id)
+    except FileNotFoundError:
+        return load_test_case(
+            settings.artifacts_dir / "custom_test_cases", test_case_id
+        )
 
 
 def _case_summary(test_case: TestCase) -> dict[str, Any]:
@@ -53,6 +97,9 @@ def _artifact_urls(
         "result": f"{base_url}/result.json",
         "action_history": f"{base_url}/action_history.json",
         "ux_analysis": f"{base_url}/ux_analysis.json",
+        "token_usage": (
+            f"{base_url}/token_usage.json" if artifacts.get("token_usage") else None
+        ),
         "video": (
             f"{base_url}/video/journey.webm" if artifacts.get("video") else None
         ),
@@ -129,8 +176,11 @@ def _read_run(test_case_id: str, run_id: str) -> dict[str, Any]:
         logger.exception("Could not read run result %s/%s", test_case_id, run_id)
         raise HTTPException(status_code=500, detail="Run result could not be read.") from exc
     result["run_url"] = f"/api/test-cases/{test_case_id}/runs/{run_id}"
+    artifacts = result.get("artifacts", {})
+    if "token_usage" not in artifacts and (run_directory / "token_usage.json").is_file():
+        artifacts["token_usage"] = "token_usage.json"
     result["artifact_urls"] = _artifact_urls(
-        test_case_id, run_id, result.get("artifacts", {})
+        test_case_id, run_id, artifacts
     )
     return result
 
@@ -168,9 +218,109 @@ def _queued_run(
             "video": None,
             "action_history": "action_history.json",
             "ux_analysis": "ux_analysis.json",
+            "token_usage": "token_usage.json",
         },
-        "artifact_urls": _artifact_urls(test_case.test_case_id, run_id, {}),
+        "artifact_urls": _artifact_urls(
+            test_case.test_case_id, run_id, {"token_usage": "token_usage.json"}
+        ),
     }
+
+
+def _queue_test_runs(
+    test_case: TestCase,
+    persona_ids: list[str],
+    headed: bool,
+    background_tasks: BackgroundTasks,
+    response: Response,
+) -> dict[str, Any]:
+    run_ids = [new_run_id() for _ in persona_ids]
+    batch_id = new_batch_id()
+    batch = create_batch_record(test_case, persona_ids, run_ids, batch_id)
+    batch_directory = settings.artifacts_dir / test_case.test_case_id / batch_id
+    queued_runs = []
+    for persona_id, run_id in zip(persona_ids, run_ids, strict=True):
+        run_directory = batch_directory / persona_id
+        run_directory.mkdir(parents=True, exist_ok=False)
+        queued_run = _queued_run(test_case, persona_id, run_id, batch_id)
+        (run_directory / "result.json").write_text(
+            json.dumps(queued_run, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        queued_runs.append(queued_run)
+    batch["runs"] = [
+        {**batch_run, "status": "queued"} for batch_run in batch["runs"]
+    ]
+    save_batch_record(batch, settings.artifacts_dir)
+    background_tasks.add_task(
+        execute_batch,
+        test_case,
+        batch,
+        headed=headed,
+        artifacts_root=settings.artifacts_dir,
+    )
+    response.headers["Location"] = (
+        f"/api/test-cases/{test_case.test_case_id}/batches/{batch_id}"
+    )
+    return {
+        "run_id": batch_id,
+        "test_case_id": test_case.test_case_id,
+        "batch_id": batch_id,
+        "batch_url": (
+            f"/api/test-cases/{test_case.test_case_id}/batches/{batch_id}"
+        ),
+        "status": "queued",
+        "runs": queued_runs,
+    }
+
+
+@runs_router.post("/custom", status_code=202)
+def create_custom_test_runs(
+    request: CustomRunRequest,
+    background_tasks: BackgroundTasks,
+    response: Response,
+) -> dict[str, Any]:
+    if not settings.azure_ai_configured:
+        raise HTTPException(
+            status_code=503,
+            detail="Azure AI Foundry must be configured before starting a test run.",
+        )
+    if len(set(request.persona_ids)) != len(request.persona_ids):
+        raise HTTPException(status_code=422, detail="Persona IDs must be unique.")
+    unknown_personas = [
+        persona_id for persona_id in request.persona_ids
+        if get_persona(persona_id) is None
+    ]
+    if unknown_personas:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown persona IDs: {', '.join(unknown_personas)}",
+        )
+
+    website = str(request.website)
+    hostname = urlsplit(website).hostname
+    if hostname is None:
+        raise HTTPException(status_code=422, detail="Website URL must include a hostname.")
+
+    custom_cases_directory = settings.artifacts_dir / "custom_test_cases"
+    custom_cases_directory.mkdir(parents=True, exist_ok=True)
+    test_case_id = f"WEB-{new_batch_id().upper()}"
+    test_case = TestCase(
+        test_case_id=test_case_id,
+        name=f"Custom UX test for {hostname}",
+        website=request.website,
+        allowed_domain=hostname,
+        persona_id=request.persona_ids[0],
+        goal=request.task,
+        completion_criteria=[request.task],
+        completion_mode="agent_reported",
+        product_keywords=[],
+        max_steps=18,
+    )
+    case_path = custom_cases_directory / f"{test_case_id}.json"
+    case_path.write_text(test_case.model_dump_json(indent=2), encoding="utf-8")
+    return _queue_test_runs(
+        test_case, request.persona_ids, request.headed, background_tasks, response
+    )
 
 
 @router.get("")
@@ -185,10 +335,28 @@ def get_test_cases() -> list[dict[str, Any]]:
     return cases
 
 
+@runs_router.get("")
+def get_all_test_runs() -> list[dict[str, Any]]:
+    case_ids = {
+        case_path.stem for case_path in CASES_DIRECTORY.glob("*.json")
+    }
+    custom_cases_directory = settings.artifacts_dir / "custom_test_cases"
+    if custom_cases_directory.is_dir():
+        case_ids.update(
+            case_path.stem for case_path in custom_cases_directory.glob("*.json")
+        )
+    runs = [
+        run
+        for test_case_id in sorted(case_ids)
+        for run in get_test_case_runs(test_case_id)
+    ]
+    return sorted(runs, key=lambda run: run.get("started_at") or "", reverse=True)
+
+
 @router.get("/{test_case_id}")
 def get_test_case(test_case_id: str) -> dict[str, Any]:
     try:
-        test_case = load_test_case(CASES_DIRECTORY, test_case_id)
+        test_case = _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     return _case_summary(test_case)
@@ -202,7 +370,7 @@ def create_test_runs(
     response: Response,
 ) -> dict[str, Any]:
     try:
-        test_case = load_test_case(CASES_DIRECTORY, test_case_id)
+        test_case = _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
 
@@ -223,55 +391,15 @@ def create_test_runs(
             detail="Azure AI Foundry must be configured before starting a test run.",
         )
 
-    run_ids = [new_run_id() for _ in persona_ids]
-    batch_id = new_batch_id()
-    batch = create_batch_record(test_case, persona_ids, run_ids, batch_id)
-    batch_directory = (
-        settings.artifacts_dir / test_case.test_case_id / batch_id
+    return _queue_test_runs(
+        test_case, persona_ids, request.headed, background_tasks, response
     )
-    queued_runs = []
-    for persona_id, run_id in zip(persona_ids, run_ids, strict=True):
-        run_directory = batch_directory / persona_id
-        run_directory.mkdir(parents=True, exist_ok=False)
-        queued_run = _queued_run(test_case, persona_id, run_id, batch_id)
-        (run_directory / "result.json").write_text(
-            json.dumps(queued_run, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        queued_runs.append(queued_run)
-    batch["runs"] = [
-        {
-            **batch_run,
-            "status": "queued",
-        }
-        for batch_run in batch["runs"]
-    ]
-    save_batch_record(batch, settings.artifacts_dir)
-
-    background_tasks.add_task(
-        execute_batch,
-        test_case,
-        batch,
-        headed=request.headed,
-        artifacts_root=settings.artifacts_dir,
-    )
-    response.headers["Location"] = (
-        f"/api/test-cases/{test_case_id}/batches/{batch_id}"
-    )
-    return {
-        "run_id": batch_id,
-        "test_case_id": test_case_id,
-        "batch_id": batch_id,
-        "batch_url": f"/api/test-cases/{test_case_id}/batches/{batch_id}",
-        "status": "queued",
-        "runs": queued_runs,
-    }
 
 
 @router.get("/{test_case_id}/batches")
 def get_test_case_batches(test_case_id: str) -> list[dict[str, Any]]:
     try:
-        load_test_case(CASES_DIRECTORY, test_case_id)
+        _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     batch_directory = settings.artifacts_dir / test_case_id / "batches"
@@ -296,7 +424,7 @@ def get_test_case_batches(test_case_id: str) -> list[dict[str, Any]]:
 @router.get("/{test_case_id}/batches/{batch_id}")
 def get_test_case_batch(test_case_id: str, batch_id: str) -> dict[str, Any]:
     try:
-        load_test_case(CASES_DIRECTORY, test_case_id)
+        _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     if not RUN_ID_PATTERN.fullmatch(batch_id):
@@ -315,10 +443,80 @@ def get_test_case_batch(test_case_id: str, batch_id: str) -> dict[str, Any]:
         ) from exc
 
 
+@router.post("/{test_case_id}/reports/{report_id}/pdf")
+async def upload_report_pdf(
+    test_case_id: str,
+    report_id: str,
+    file: UploadFile = File(...),
+) -> dict[str, str]:
+    try:
+        _load_test_case(test_case_id)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Test case not found.") from exc
+    if not RUN_ID_PATTERN.fullmatch(report_id):
+        raise HTTPException(status_code=404, detail="Report not found.")
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=415, detail="Only PDF report files are accepted."
+        )
+
+    pdf_bytes = await file.read(MAX_REPORT_PDF_BYTES + 1)
+    if len(pdf_bytes) > MAX_REPORT_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="PDF report is too large.")
+    if not pdf_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=422, detail="Uploaded file is not a valid PDF.")
+
+    batch_path = get_batch_record_path(
+        test_case_id, report_id, settings.artifacts_dir
+    )
+    if batch_path.is_file():
+        batch = get_test_case_batch(test_case_id, report_id)
+        if batch.get("batch_id") != report_id:
+            raise HTTPException(status_code=404, detail="Report not found.")
+        local_directory = settings.artifacts_dir / test_case_id / report_id
+        object_name = f"{test_case_id}/{report_id}/report.pdf"
+    else:
+        run = _read_run(test_case_id, report_id)
+        persona_id = run.get("persona_id")
+        if not isinstance(persona_id, str) or not PERSONA_ID_PATTERN.fullmatch(persona_id):
+            raise HTTPException(status_code=404, detail="Run not found.")
+        local_directory = _case_run_directory(test_case_id, report_id)
+        batch_id = run.get("batch_id")
+        storage_run_id = (
+            batch_id if isinstance(batch_id, str) and RUN_ID_PATTERN.fullmatch(batch_id)
+            else report_id
+        )
+        object_name = f"{test_case_id}/{storage_run_id}/{persona_id}/report.pdf"
+
+    try:
+        local_directory.mkdir(parents=True, exist_ok=True)
+        (local_directory / "report.pdf").write_bytes(pdf_bytes)
+    except OSError as exc:
+        logger.exception("Could not save report PDF for %s/%s", test_case_id, report_id)
+        raise HTTPException(
+            status_code=500, detail="Report PDF could not be saved locally."
+        ) from exc
+
+    try:
+        gs_uri = send_report_pdf(pdf_bytes, object_name)
+    except Exception as exc:
+        logger.exception("Could not upload report PDF for %s/%s", test_case_id, report_id)
+        raise HTTPException(
+            status_code=502,
+            detail=f"PDF is saved locally, but upload to {BUCKET_NAME} failed.",
+        ) from exc
+    return {
+        "status": "uploaded",
+        "bucket": BUCKET_NAME,
+        "object_name": object_name,
+        "gs_uri": gs_uri,
+    }
+
+
 @router.get("/{test_case_id}/runs")
 def get_test_case_runs(test_case_id: str) -> list[dict[str, Any]]:
     try:
-        load_test_case(CASES_DIRECTORY, test_case_id)
+        _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     case_directory = settings.artifacts_dir / test_case_id
@@ -348,7 +546,9 @@ def get_test_case_runs(test_case_id: str) -> list[dict[str, Any]]:
     modern_run_ids = {run["run_id"] for run in runs}
     runs.extend(
         _read_run(test_case_id, run_directory.name)
-        for run_directory in legacy_directory.iterdir()
+        for run_directory in (
+            legacy_directory.iterdir() if legacy_directory.is_dir() else []
+        )
         if run_directory.is_dir()
         and run_directory.name not in modern_run_ids
         and RUN_ID_PATTERN.fullmatch(run_directory.name)
@@ -395,7 +595,7 @@ def _nested_run_id(result_path: Path) -> str:
 @router.get("/{test_case_id}/runs/{run_id}")
 def get_test_run(test_case_id: str, run_id: str) -> dict[str, Any]:
     try:
-        load_test_case(CASES_DIRECTORY, test_case_id)
+        _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     return _read_run(test_case_id, run_id)
@@ -404,7 +604,7 @@ def get_test_run(test_case_id: str, run_id: str) -> dict[str, Any]:
 @router.get("/{test_case_id}/runs/{run_id}/artifacts/{artifact_path:path}")
 def get_test_run_artifact(test_case_id: str, run_id: str, artifact_path: str):
     try:
-        load_test_case(CASES_DIRECTORY, test_case_id)
+        _load_test_case(test_case_id)
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(status_code=404, detail="Test case not found.") from exc
     run_directory = _case_run_directory(test_case_id, run_id).resolve()
