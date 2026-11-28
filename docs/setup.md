@@ -70,6 +70,8 @@ gcloud auth application-default login
 The authenticated account needs permission to create objects in the bucket. A
 cloud upload error is recorded in the local `result.json`; it does not change
 the browser run's outcome or remove its local artifacts.
+When a user downloads a PDF report from the dashboard, the same PDF is also
+uploaded to the matching batch or persona folder in the bucket.
 
 Alternatively, create the ignored root file `settings.local.json`:
 

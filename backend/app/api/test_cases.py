@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Response, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
 
@@ -24,12 +24,14 @@ from app.orchestrator.run_batch import (
 )
 from app.orchestrator.test_runner import CASES_DIRECTORY
 from app.personas.persona_manager import get_persona
+from app.storage.gcs_artifacts import BUCKET_NAME, upload_report_pdf as send_report_pdf
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/test-cases", tags=["test-cases", "runs"])
 runs_router = APIRouter(prefix="/api/runs", tags=["runs"])
 RUN_ID_PATTERN = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{8}$")
 PERSONA_ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
+MAX_REPORT_PDF_BYTES = 10 * 1024 * 1024
 
 
 class RunRequest(BaseModel):
@@ -439,6 +441,76 @@ def get_test_case_batch(test_case_id: str, batch_id: str) -> dict[str, Any]:
         raise HTTPException(
             status_code=500, detail="Persona batch record could not be read."
         ) from exc
+
+
+@router.post("/{test_case_id}/reports/{report_id}/pdf")
+async def upload_report_pdf(
+    test_case_id: str,
+    report_id: str,
+    file: UploadFile = File(...),
+) -> dict[str, str]:
+    try:
+        _load_test_case(test_case_id)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail="Test case not found.") from exc
+    if not RUN_ID_PATTERN.fullmatch(report_id):
+        raise HTTPException(status_code=404, detail="Report not found.")
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=415, detail="Only PDF report files are accepted."
+        )
+
+    pdf_bytes = await file.read(MAX_REPORT_PDF_BYTES + 1)
+    if len(pdf_bytes) > MAX_REPORT_PDF_BYTES:
+        raise HTTPException(status_code=413, detail="PDF report is too large.")
+    if not pdf_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=422, detail="Uploaded file is not a valid PDF.")
+
+    batch_path = get_batch_record_path(
+        test_case_id, report_id, settings.artifacts_dir
+    )
+    if batch_path.is_file():
+        batch = get_test_case_batch(test_case_id, report_id)
+        if batch.get("batch_id") != report_id:
+            raise HTTPException(status_code=404, detail="Report not found.")
+        local_directory = settings.artifacts_dir / test_case_id / report_id
+        object_name = f"{test_case_id}/{report_id}/report.pdf"
+    else:
+        run = _read_run(test_case_id, report_id)
+        persona_id = run.get("persona_id")
+        if not isinstance(persona_id, str) or not PERSONA_ID_PATTERN.fullmatch(persona_id):
+            raise HTTPException(status_code=404, detail="Run not found.")
+        local_directory = _case_run_directory(test_case_id, report_id)
+        batch_id = run.get("batch_id")
+        storage_run_id = (
+            batch_id if isinstance(batch_id, str) and RUN_ID_PATTERN.fullmatch(batch_id)
+            else report_id
+        )
+        object_name = f"{test_case_id}/{storage_run_id}/{persona_id}/report.pdf"
+
+    try:
+        local_directory.mkdir(parents=True, exist_ok=True)
+        (local_directory / "report.pdf").write_bytes(pdf_bytes)
+    except OSError as exc:
+        logger.exception("Could not save report PDF for %s/%s", test_case_id, report_id)
+        raise HTTPException(
+            status_code=500, detail="Report PDF could not be saved locally."
+        ) from exc
+
+    try:
+        gs_uri = send_report_pdf(pdf_bytes, object_name)
+    except Exception as exc:
+        logger.exception("Could not upload report PDF for %s/%s", test_case_id, report_id)
+        raise HTTPException(
+            status_code=502,
+            detail=f"PDF is saved locally, but upload to {BUCKET_NAME} failed.",
+        ) from exc
+    return {
+        "status": "uploaded",
+        "bucket": BUCKET_NAME,
+        "object_name": object_name,
+        "gs_uri": gs_uri,
+    }
 
 
 @router.get("/{test_case_id}/runs")

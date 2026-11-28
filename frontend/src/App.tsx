@@ -186,6 +186,163 @@ function websiteHost(website: string): string {
   }
 }
 
+function pdfSafeText(value: string): string {
+  return value
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, '?')
+}
+
+async function downloadReportPdf(
+  reportName: string,
+  website: string,
+  goal: string,
+  testCaseId: string,
+  runs: RunRecord[],
+) {
+  const { jsPDF } = await import('jspdf')
+  const document = new jsPDF()
+  const margin = 44
+  const pageWidth = document.internal.pageSize.getWidth()
+  const pageHeight = document.internal.pageSize.getHeight()
+  const contentWidth = pageWidth - margin * 2
+  const bottomMargin = 44
+  let cursorY = margin
+
+  function addText(
+    text: string,
+    fontSize = 10,
+    fontStyle: 'normal' | 'bold' = 'normal',
+    spacingAfter = 5,
+  ) {
+    document.setFont('helvetica', fontStyle)
+    document.setFontSize(fontSize)
+    const lines = document.splitTextToSize(pdfSafeText(text), contentWidth)
+    const lineHeight = fontSize * 1.35
+    for (const line of lines) {
+      if (cursorY + lineHeight > pageHeight - bottomMargin) {
+        document.addPage()
+        cursorY = margin
+      }
+      document.text(line, margin, cursorY)
+      cursorY += lineHeight
+    }
+    cursorY += spacingAfter
+  }
+
+  function addFindings(title: string, findings: Finding[]) {
+    addText(title, 12, 'bold', 3)
+    if (findings.length === 0) {
+      addText('None recorded.', 9, 'normal', 5)
+      return
+    }
+    findings.forEach((finding, index) => {
+      addText(`${index + 1}. ${finding.observation} [${finding.priority}]`, 10, 'bold', 2)
+      addText(`Persona impact: ${finding.persona_impact}`, 9, 'normal', 2)
+      addText(`Recommendation: ${finding.recommendation}`, 9, 'normal', 2)
+      finding.evidence.forEach((evidence) => {
+        addText(
+          `Evidence (step ${evidence.step}, ${evidence.stage}, ${evidence.source}): "${evidence.quote}"`,
+          8,
+          'normal',
+          2,
+        )
+      })
+      cursorY += 4
+    })
+  }
+
+  document.setProperties({ title: `${reportName} - Persona UX Report` })
+  addText('PERSONA UX TEST REPORT', 19, 'bold', 4)
+  addText(reportName, 14, 'bold', 3)
+  addText(`Website: ${website}`, 9)
+  addText(`Task: ${goal}`, 9)
+  addText(`Generated: ${new Date().toLocaleString()}`, 9)
+  addText(
+    'Screenshots and video remain available in the online report. Persona findings are AI-generated and should be validated with real users.',
+    9,
+    'normal',
+    12,
+  )
+
+  runs.forEach((run, index) => {
+    if (index > 0) {
+      cursorY += 6
+      if (cursorY + 36 > pageHeight - bottomMargin) {
+        document.addPage()
+        cursorY = margin
+      }
+      document.setDrawColor(220, 223, 232)
+      document.line(margin, cursorY, pageWidth - margin, cursorY)
+      cursorY += 12
+    }
+    addText(`${run.persona_name} - ${statusLabel(run.status)}`, 14, 'bold', 4)
+    addText(
+      `Started: ${formatDate(run.started_at)} | Duration: ${run.duration_seconds ?? 0}s | Steps: ${run.step_count} | Tokens: ${formatNumber(run.token_usage?.total_tokens)}`,
+      8,
+    )
+    if (run.result) addText(`Run outcome: ${run.result}`, 9)
+    if (run.error) addText(`Run error: ${run.error}`, 9)
+    if (run.analysis?.summary) addText(`Summary: ${run.analysis.summary}`, 9)
+    else if (run.analysis?.error) addText(`Analysis: ${run.analysis.error}`, 9)
+    if (run.analysis?.evidence_scope) {
+      addText(`Evidence scope: ${run.analysis.evidence_scope}`, 8)
+    }
+    addFindings('Potential challenges', run.analysis?.improvements ?? [])
+    addFindings('What worked', run.analysis?.strengths ?? [])
+    if (run.analysis?.not_assessed?.length) {
+      addText('Not assessed', 11, 'bold', 3)
+      run.analysis.not_assessed.forEach((item) => addText(`- ${item}`, 9, 'normal', 2))
+    }
+  })
+
+  const totalPages = document.getNumberOfPages()
+  for (let page = 1; page <= totalPages; page += 1) {
+    document.setPage(page)
+    document.setFont('helvetica', 'normal')
+    document.setFontSize(8)
+    document.setTextColor(125, 132, 148)
+    document.text(
+      'AI-simulated persona review; not a substitute for real-user research.',
+      margin,
+      pageHeight - 22,
+    )
+    document.text(`${page} / ${totalPages}`, pageWidth - margin, pageHeight - 22, {
+      align: 'right',
+    })
+  }
+
+  const filename = pdfSafeText(reportName)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '') || 'persona-ux'
+  const pdfFilename = `${filename}-report.pdf`
+  const pdfBlob = document.output('blob')
+  document.save(pdfFilename)
+
+  const firstRun = runs[0]
+  const reportId = runs.length > 1 ? firstRun.batch_id : firstRun.run_id
+  if (!reportId) {
+    throw new Error('The PDF was downloaded, but its run could not be matched for cloud upload.')
+  }
+  const formData = new FormData()
+  formData.append('file', pdfBlob, pdfFilename)
+  try {
+    const upload = await requestJson<{ gs_uri: string }>(
+      `/api/test-cases/${encodeURIComponent(testCaseId)}/reports/${encodeURIComponent(reportId)}/pdf`,
+      { method: 'POST', body: formData },
+    )
+    return upload.gs_uri
+  } catch (uploadError) {
+    const detail = uploadError instanceof Error ? uploadError.message : 'Unknown upload error.'
+    throw new Error(`The PDF was downloaded, but GCP upload failed: ${detail}`)
+  }
+}
+
 function App() {
   const [apiState, setApiState] = useState<ApiState>('loading')
   const [personas, setPersonas] = useState<Persona[]>([])
@@ -436,9 +593,9 @@ function App() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Persona UX home">
-          <span className="brand-mark" aria-hidden="true">P</span>
-          <span>persona<span className="brand-light">lab</span></span>
+        <a className="brand" href="/" aria-label="AgentQA home">
+          <span className="brand-mark" aria-hidden="true">A</span>
+          <span>Agent<span className="brand-light">QA</span></span>
         </a>
         <div className={`connection-status ${apiState}`} role="status">
           <span className="status-dot" aria-hidden="true" />
@@ -630,7 +787,7 @@ function App() {
       </div>
 
       <footer className="page-footer">
-        <span>AI Persona UX Testing Agent</span>
+        <span>AgentQA</span>
         <span>Simulated personas support testing; they do not replace user research.</span>
       </footer>
     </main>
@@ -714,6 +871,13 @@ function PersonaBatchReport({
           </article>
         ))}
       </div>
+      <DownloadReportButton
+        reportName={firstRun.name}
+        website={firstRun.website}
+        goal={firstRun.goal}
+        testCaseId={firstRun.test_case_id}
+        runs={runs}
+      />
     </section>
   )
 }
@@ -801,6 +965,13 @@ function RunReport({
           </ol>
         ) : <p className="muted-copy">Action history will appear when the run finishes.</p>}
       </section>
+      <DownloadReportButton
+        reportName={run.name}
+        website={run.website}
+        goal={run.goal}
+        testCaseId={run.test_case_id}
+        runs={[run]}
+      />
     </section>
   )
 }
@@ -832,6 +1003,59 @@ function FindingList({
 
 function Metric({ label, value }: { label: string; value: number | undefined }) {
   return <div className="metric-card"><span>{label}</span><strong>{formatNumber(value)}</strong></div>
+}
+
+function DownloadReportButton({
+  reportName,
+  website,
+  goal,
+  testCaseId,
+  runs,
+}: {
+  reportName: string
+  website: string
+  goal: string
+  testCaseId: string
+  runs: RunRecord[]
+}) {
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState('')
+  const [uploadedUri, setUploadedUri] = useState('')
+
+  async function handleDownload() {
+    setIsGenerating(true)
+    setError('')
+    setUploadedUri('')
+    try {
+      const uri = await downloadReportPdf(reportName, website, goal, testCaseId, runs)
+      setUploadedUri(uri)
+    } catch (downloadError) {
+      setError(
+        downloadError instanceof Error
+          ? downloadError.message.startsWith('The PDF was downloaded,')
+            ? downloadError.message
+            : `Could not create the PDF: ${downloadError.message}`
+          : 'Could not create the PDF.',
+      )
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  return (
+    <div className="report-download-row">
+      {error && <p className="pdf-download-error" role="alert">{error}</p>}
+      {uploadedUri && <p className="pdf-download-success" role="status">Uploaded to {uploadedUri}</p>}
+      <button
+        className="pdf-download-button"
+        disabled={isGenerating}
+        onClick={() => void handleDownload()}
+        type="button"
+      >
+        {isGenerating ? 'Generating and uploading…' : 'Download PDF + upload to GCP'}
+      </button>
+    </div>
+  )
 }
 
 export default App

@@ -43,6 +43,15 @@ def _upload_file(
         blob.upload_from_filename(str(file_path))
 
 
+def upload_report_pdf(pdf_bytes: bytes, object_name: str) -> str:
+    parts = object_name.split("/")
+    if not object_name or any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("Invalid cloud storage object name.")
+    blob = storage.Client().bucket(BUCKET_NAME).blob(object_name)
+    blob.upload_from_string(pdf_bytes, content_type="application/pdf")
+    return f"gs://{BUCKET_NAME}/{object_name}"
+
+
 def _write_result(result_path: Path, result: dict[str, Any]) -> None:
     result_path.write_text(
         json.dumps(result, indent=2, ensure_ascii=False),

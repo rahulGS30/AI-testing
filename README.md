@@ -27,8 +27,9 @@ network requests are blocked.
 **Implemented:** FastAPI health/persona and run APIs, Azure AI Foundry
 configuration, saved and custom public-HTTPS test runs, persona selection,
 Playwright screenshots/video, evidence-backed UX analysis, per-call token usage
-logs, Google Cloud Storage backups of each persona's result artifacts, run
-history, and a React dashboard for reports and artifacts.
+logs, Google Cloud Storage backups of each persona's result artifacts and
+dashboard-generated PDF reports, run history, and a React dashboard for reports
+and artifacts.
 
 Custom task completion is agent-reported and is not independently verified.
 **Not implemented yet:** axe-core scans, database-backed history/token usage,
